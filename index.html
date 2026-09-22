@@ -353,13 +353,71 @@
   .chip.active { border-color: var(--accent); color: var(--accent); background: transparent; }
 
   .composer {
-    display: flex; align-items: flex-end; gap: 10px;
+    display: flex; align-items: flex-end; gap: 8px;
     border: 1px solid var(--border);
     background: var(--panel-2);
     border-radius: 14px;
-    padding: 8px 8px 8px 14px;
+    padding: 8px 8px 8px 8px;
   }
   .composer:focus-within { border-color: var(--accent); }
+
+  .composerIconBtn {
+    flex: 0 0 auto;
+    width: 34px; height: 34px;
+    border: none; background: transparent;
+    color: var(--text-2);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .composerIconBtn:hover { background: var(--panel); color: var(--accent); }
+  .composerIconBtn.recording {
+    color: var(--accent-ink);
+    background: var(--accent);
+    animation: micPulse 1.4s infinite;
+  }
+  @keyframes micPulse {
+    0% { box-shadow: 0 0 0 0 rgba(229,72,77,0.45); }
+    70% { box-shadow: 0 0 0 8px rgba(229,72,77,0); }
+    100% { box-shadow: 0 0 0 0 rgba(229,72,77,0); }
+  }
+
+  .attachStrip {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .attachStrip:empty { display: none; }
+  .attachChip {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 8px 4px 4px;
+    font-size: 12px;
+    color: var(--text-2);
+    max-width: 220px;
+  }
+  .attachChip img {
+    width: 26px; height: 26px; border-radius: 5px;
+    object-fit: cover; flex: 0 0 auto;
+  }
+  .attachChip .attachIcon {
+    width: 26px; height: 26px; border-radius: 5px;
+    background: var(--panel); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex: 0 0 auto;
+  }
+  .attachChip .attachName {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .attachChip button {
+    flex: 0 0 auto; border: none; background: none; color: var(--text-3);
+    cursor: pointer; font-size: 13px; padding: 0 2px;
+  }
+  .attachChip button:hover { color: var(--accent); }
+  .attachChip.processing .attachName { color: var(--text-3); font-style: italic; }
+
   #input {
     flex: 1;
     resize: none;
@@ -455,7 +513,11 @@
       <button class="chip" data-tipo="Atualização">Atualização</button>
       <button class="chip" data-tipo="Retificação">Retificação</button>
     </div>
+    <div class="attachStrip" id="attachStrip"></div>
     <div class="composer">
+      <button id="attachBtn" class="composerIconBtn" title="Anexar foto ou PDF" type="button">📎</button>
+      <button id="micBtn" class="composerIconBtn" title="Ditar por voz" type="button">🎤</button>
+      <input type="file" id="fileInput" accept="image/*,application/pdf" multiple hidden>
       <textarea id="input" rows="1" placeholder="Ex.: Incêndio em galpão na Av. Amazonas, BH. Vítima com queimaduras conduzida ao PS. 3 viaturas, 9 militares. Ainda em atendimento."></textarea>
       <button id="sendBtn" title="Enviar">➤</button>
     </div>
@@ -467,7 +529,7 @@
 (function () {
   "use strict";
 
-  var EDGE_FUNCTION_URL = "https://aqvlavojjretarmllkwp.functions.supabase.co/gerar-anuncio"; // TODO: cole aqui a URL da sua Edge Function
+  var EDGE_FUNCTION_URL = "https://aqvlavojjretarmllkwp.functions.supabase.co/gerar-anuncio";
 
   var CRITERIA = [
     ["3.1", "Acidente aeronáutico, ferroviário ou aquaviário."],
@@ -502,7 +564,11 @@
     creditsPanel: document.getElementById("creditsPanel"),
     creditsPhoto: document.getElementById("creditsPhoto"),
     scrim: document.getElementById("scrim"),
-    chips: document.querySelectorAll(".chip")
+    chips: document.querySelectorAll(".chip"),
+    attachBtn: document.getElementById("attachBtn"),
+    micBtn: document.getElementById("micBtn"),
+    fileInput: document.getElementById("fileInput"),
+    attachStrip: document.getElementById("attachStrip")
   };
 
   CRITERIA.forEach(function (c) {
@@ -648,26 +714,225 @@
     els.feed.innerHTML = "";
     els.feed.appendChild(els.empty);
     els.empty.style.display = "";
+    clearAttachments();
   });
+
+  // ---------- Anexos (imagem + PDF) ----------
+  // O Gemini lê imagem e PDF nativamente — só convertemos pra base64 e
+  // mandamos junto na mensagem, sem precisar de nenhuma biblioteca extra.
+  var attachments = []; // {id, name, file, mimeType, base64, previewUrl, processing}
+  var attachIdSeq = 0;
+  var ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
+  var MAX_ATTACHMENTS = 5;
+  var MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+
+  function renderAttachStrip() {
+    els.attachStrip.innerHTML = "";
+    attachments.forEach(function (a) {
+      var chip = document.createElement("div");
+      chip.className = "attachChip" + (a.processing ? " processing" : "");
+      if (a.previewUrl) {
+        var img = document.createElement("img");
+        img.src = a.previewUrl;
+        chip.appendChild(img);
+      } else {
+        var icon = document.createElement("span");
+        icon.className = "attachIcon";
+        icon.textContent = a.mimeType === "application/pdf" ? "📄" : "🖼️";
+        chip.appendChild(icon);
+      }
+      var name = document.createElement("span");
+      name.className = "attachName";
+      name.textContent = a.processing ? (a.name + " — lendo…") : a.name;
+      chip.appendChild(name);
+      var rm = document.createElement("button");
+      rm.type = "button";
+      rm.textContent = "✕";
+      rm.title = "Remover";
+      rm.onclick = function () { removeAttachment(a.id); };
+      chip.appendChild(rm);
+      els.attachStrip.appendChild(chip);
+    });
+  }
+
+  function removeAttachment(id) {
+    var a = attachments.find(function (x) { return x.id === id; });
+    if (a && a.previewUrl) URL.revokeObjectURL(a.previewUrl);
+    attachments = attachments.filter(function (x) { return x.id !== id; });
+    renderAttachStrip();
+  }
+
+  function clearAttachments() {
+    attachments.forEach(function (a) { if (a.previewUrl) URL.revokeObjectURL(a.previewUrl); });
+    attachments = [];
+    renderAttachStrip();
+  }
+
+  function fileToBase64(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        // reader.result é algo como "data:image/png;base64,AAAA..." — pegamos só a parte depois da vírgula.
+        var result = String(reader.result || "");
+        var idx = result.indexOf(",");
+        resolve(idx >= 0 ? result.slice(idx + 1) : result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  els.attachBtn.addEventListener("click", function () {
+    if (attachments.length >= MAX_ATTACHMENTS) {
+      addErrorBubble("Limite de " + MAX_ATTACHMENTS + " anexos por anúncio atingido — remova um pra anexar outro.");
+      return;
+    }
+    els.fileInput.click();
+  });
+
+  els.fileInput.addEventListener("change", async function () {
+    var files = Array.prototype.slice.call(els.fileInput.files || []);
+    els.fileInput.value = "";
+    for (var i = 0; i < files.length; i++) {
+      await handleFile(files[i]);
+    }
+  });
+
+  async function handleFile(file) {
+    if (ALLOWED_MIME.indexOf(file.type) === -1) {
+      addErrorBubble("Tipo de arquivo não suportado (" + (file.type || file.name) + "). Use foto (JPEG/PNG/WebP/GIF) ou PDF.");
+      return;
+    }
+    if (attachments.length >= MAX_ATTACHMENTS) {
+      addErrorBubble("Limite de " + MAX_ATTACHMENTS + " anexos por anúncio atingido — remova um pra anexar outro.");
+      return;
+    }
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      addErrorBubble("Arquivo \"" + file.name + "\" é grande demais pra anexar (máx. 15MB).");
+      return;
+    }
+
+    var id = ++attachIdSeq;
+    var entry = {
+      id: id,
+      name: file.name,
+      mimeType: file.type,
+      processing: true,
+      previewUrl: file.type.indexOf("image/") === 0 ? URL.createObjectURL(file) : null
+    };
+    attachments.push(entry);
+    renderAttachStrip();
+
+    try {
+      entry.base64 = await fileToBase64(file);
+      entry.processing = false;
+      renderAttachStrip();
+    } catch (err) {
+      attachments = attachments.filter(function (a) { return a.id !== id; });
+      renderAttachStrip();
+      addErrorBubble("Não consegui ler o arquivo \"" + file.name + "\". Tente novamente.");
+    }
+  }
+
+  // ---------- Ditado por voz ----------
+  var recognition = null;
+  var recognizing = false;
+  var dictationBaseValue = "";
+
+  (function setupSpeechRecognition() {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      els.micBtn.disabled = true;
+      els.micBtn.style.opacity = "0.4";
+      els.micBtn.title = "Ditado por voz não é suportado neste navegador — use o Chrome.";
+      return;
+    }
+    recognition = new SR();
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = function (event) {
+      var finalText = "";
+      var interimText = "";
+      for (var i = event.resultIndex; i < event.results.length; i++) {
+        var res = event.results[i];
+        if (res.isFinal) finalText += res[0].transcript;
+        else interimText += res[0].transcript;
+      }
+      if (finalText) {
+        dictationBaseValue = (dictationBaseValue ? dictationBaseValue + " " : "") + finalText.trim();
+      }
+      els.input.value = (dictationBaseValue + " " + interimText).trim();
+      autoResize();
+    };
+
+    recognition.onerror = function (e) {
+      var wasRecognizing = recognizing;
+      stopDictation();
+      if (wasRecognizing && e.error !== "no-speech" && e.error !== "aborted") {
+        addErrorBubble("Não consegui captar o áudio (" + e.error + "). Confira a permissão do microfone no navegador.");
+      }
+    };
+
+    recognition.onend = function () {
+      if (recognizing) stopDictation();
+    };
+  })();
+
+  function startDictation() {
+    if (!recognition || recognizing) return;
+    dictationBaseValue = els.input.value ? els.input.value.trim() : "";
+    recognizing = true;
+    els.micBtn.classList.add("recording");
+    try { recognition.start(); } catch (e) { /* já iniciado */ }
+  }
+
+  function stopDictation() {
+    recognizing = false;
+    els.micBtn.classList.remove("recording");
+    if (recognition) { try { recognition.stop(); } catch (e) {} }
+  }
+
+  if (els.micBtn) {
+    els.micBtn.addEventListener("click", function () {
+      if (recognizing) stopDictation(); else startDictation();
+    });
+  }
 
   async function send() {
     if (busy) return;
+    if (attachments.some(function (a) { return a.processing; })) {
+      addErrorBubble("Aguarde o carregamento do(s) anexo(s) antes de enviar.");
+      return;
+    }
     var raw = els.input.value.trim();
-    if (!raw) return;
+    var readyAttachments = attachments.filter(function (a) { return a.base64; });
+    if (!raw && readyAttachments.length === 0) return;
+    if (recognizing) stopDictation();
 
     if (!EDGE_FUNCTION_URL || EDGE_FUNCTION_URL.indexOf("SEU_PROJECT_REF") !== -1) {
       addErrorBubble("Configure EDGE_FUNCTION_URL no início do <script> com a URL real da sua Supabase Edge Function.");
       return;
     }
 
-    var messageForModel = raw;
+    var bubbleLabel = (currentTipo !== "Novo anúncio" ? "[" + currentTipo + "] " : "") +
+      (readyAttachments.length ? "[📎 " + readyAttachments.length + " anexo(s)] " : "") +
+      (raw || "(sem descrição em texto — ver anexo)");
+
+    var messageForModel = raw || "(sem descrição em texto — considerar apenas o(s) anexo(s) enviado(s))";
     if (currentTipo !== "Novo anúncio") {
-      messageForModel = "Tipo de Anúncio: " + currentTipo + "\n\n" + raw;
+      messageForModel = "Tipo de Anúncio: " + currentTipo + "\n\n" + messageForModel;
     }
 
-    addUserBubble((currentTipo !== "Novo anúncio" ? "[" + currentTipo + "] " : "") + raw);
+    var attachmentsPayload = readyAttachments.map(function (a) {
+      return { mimeType: a.mimeType, data: a.base64 };
+    });
+
+    addUserBubble(bubbleLabel);
     els.input.value = "";
     autoResize();
+    clearAttachments();
 
     turns.push({ role: "user", content: messageForModel });
 
@@ -690,7 +955,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: abortCtl.signal,
-        body: JSON.stringify({ turns: turns })
+        body: JSON.stringify({ turns: turns, attachments: attachmentsPayload })
       });
 
       var data = null;

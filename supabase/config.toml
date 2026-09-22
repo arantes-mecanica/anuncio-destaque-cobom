@@ -1,0 +1,2 @@
+[functions.gerar-anuncio]
+verify_jwt = false

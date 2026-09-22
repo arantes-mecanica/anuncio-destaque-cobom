@@ -83,7 +83,7 @@ Em ocorrências envolvendo militar do CBMMG, autoridade civil/militar, pessoa p�
 # FORMATO FINAL
 Responda SOMENTE com o bloco do anúncio, pronto para colar no Telegram — sem cabeçalhos, sem título de seção, sem comentário em volta (isso vale mesmo com ENQUADRAMENTO "a confirmar", que fica dentro do próprio campo). Acrescente PENDÊNCIAS DE PREENCHIMENTO só se houver campo faltante, e OBSERVAÇÃO DE PRIVACIDADE só se aplicável — nessa ordem, depois do anúncio. Nunca invente informação para completar o modelo; nunca omita um campo obrigatório; sempre reavalie o enquadramento a cada mensagem, inclusive em atualizações.`;
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-3.6-flash";
 const GEMINI_URL =
   `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
@@ -103,6 +103,21 @@ interface Turn {
   content: string;
 }
 
+interface Attachment {
+  mimeType: string; // image/jpeg, image/png, image/webp, image/gif, application/pdf
+  data: string; // base64, sem o prefixo "data:...;base64,"
+}
+
+const ALLOWED_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+]);
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024; // ~15MB decodificado, por arquivo
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -116,14 +131,28 @@ Deno.serve(async (req: Request) => {
   }
 
   let turns: Turn[];
+  let attachments: Attachment[];
   try {
     const body = await req.json();
     turns = body.turns;
+    attachments = Array.isArray(body.attachments) ? body.attachments : [];
     if (!Array.isArray(turns) || turns.length === 0) {
       throw new Error("empty");
     }
     if (turns[turns.length - 1].role !== "user") {
       throw new Error("must_end_on_user");
+    }
+    if (attachments.length > MAX_ATTACHMENTS) {
+      throw new Error("too_many_attachments");
+    }
+    for (const a of attachments) {
+      if (!a || typeof a.data !== "string" || !ALLOWED_MIME.has(a.mimeType)) {
+        throw new Error("bad_attachment");
+      }
+      // base64 length ~ 4/3 dos bytes originais
+      if (a.data.length > (MAX_ATTACHMENT_BYTES * 4) / 3) {
+        throw new Error("attachment_too_large");
+      }
     }
   } catch (_e) {
     return new Response(JSON.stringify({ error: "invalid_request" }), {
@@ -141,22 +170,35 @@ Deno.serve(async (req: Request) => {
   }
 
   // Gemini usa "user"/"model" (não "assistant") e cada turno é
-  // {role, parts:[{text}]}.
-  const contents = turns.map((t) => ({
-    role: t.role === "assistant" ? "model" : "user",
-    parts: [{ text: t.content }],
-  }));
+  // {role, parts:[...]}. Anexos (foto/PDF) só valem para a ÚLTIMA
+  // mensagem do usuário — igual ao comportamento da versão claude.ai,
+  // que também não reenvia anexos de turnos antigos.
+  const contents = turns.map((t, i) => {
+    // deno-lint-ignore no-explicit-any
+    const parts: any[] = [{ text: t.content }];
+    const isLastUserTurn = i === turns.length - 1 && t.role === "user";
+    if (isLastUserTurn) {
+      for (const a of attachments) {
+        parts.push({ inline_data: { mime_type: a.mimeType, data: a.data } });
+      }
+    }
+    return {
+      role: t.role === "assistant" ? "model" : "user",
+      parts,
+    };
+  });
 
   try {
     const geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        systemInstruction: { role: "system", parts: [{ text: RULES }] },
+        system_instruction: { parts: [{ text: RULES }] },
         contents,
         generationConfig: {
-          maxOutputTokens: 1500,
+          maxOutputTokens: 4096,
           temperature: 0.4,
+          thinkingConfig: { thinkingLevel: "low" },
         },
       }),
     });

@@ -1,3 +1,4 @@
 supabase/.env.local
+supabase/.temp/
 .DS_Store
 node_modules/
