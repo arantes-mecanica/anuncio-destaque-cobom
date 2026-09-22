@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Anúncio de Ocorrência de Destaque · CBMMG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+
+    --bg: #EEF1F5;
+    --panel: #FFFFFF;
+    --panel-2: #F5F7FA;
+    --border: #D7DEE6;
+    --text: #1B222C;
+    --text-2: #5B6472;
+    --text-3: #8992A0;
+    --accent: #C81E2B;
+    --accent-strong: #9C1520;
+    --accent-ink: #FFFFFF;
+    --ok: #1F7A4D;
+    --ok-bg: #E7F5EC;
+    --warn: #9A6300;
+    --warn-bg: #FCF2DD;
+    --user-bubble: #1B222C;
+    --user-ink: #F2F4F7;
+    --scrollbar: #C3CBD6;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0B0F16;
+      --panel: #121824;
+      --panel-2: #182031;
+      --border: #232C3D;
+      --text: #E8EAF0;
+      --text-2: #9BA3B4;
+      --text-3: #6E7788;
+      --accent: #E5484D;
+      --accent-strong: #FF6E66;
+      --accent-ink: #12080A;
+      --ok: #49C38A;
+      --ok-bg: #10261D;
+      --warn: #E8A33D;
+      --warn-bg: #2B220E;
+      --user-bubble: #232C3D;
+      --user-ink: #EAEDF2;
+      --scrollbar: #2B3448;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0B0F16;
+    --panel: #121824;
+    --panel-2: #182031;
+    --border: #232C3D;
+    --text: #E8EAF0;
+    --text-2: #9BA3B4;
+    --text-3: #6E7788;
+    --accent: #E5484D;
+    --accent-strong: #FF6E66;
+    --accent-ink: #12080A;
+    --ok: #49C38A;
+    --ok-bg: #10261D;
+    --warn: #E8A33D;
+    --warn-bg: #2B220E;
+    --user-bubble: #232C3D;
+    --user-ink: #EAEDF2;
+    --scrollbar: #2B3448;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Barlow", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    flex: 0 0 auto;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 14px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .brand .mark {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .brand .title {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 600;
+    font-size: 20px;
+    line-height: 1.1;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .ref {
+    display: block;
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+  .headerRight { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--text-2);
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .status .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 0 rgba(73,195,138,0.6);
+    animation: pulse 2.2s infinite;
+  }
+  .status.busy .dot { background: var(--warn); animation: pulse 0.9s infinite; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(73,195,138,0.5); }
+    70% { box-shadow: 0 0 0 6px rgba(73,195,138,0); }
+    100% { box-shadow: 0 0 0 0 rgba(73,195,138,0); }
+  }
+  .iconBtn {
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text-2);
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 15px;
+    flex: 0 0 auto;
+  }
+  .iconBtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- Criteria drawer ---------- */
+  #criteriaPanel {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(360px, 88vw);
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    padding: calc(18px + env(safe-area-inset-top,0px)) 18px calc(18px + env(safe-area-inset-bottom,0px));
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.22s ease;
+    z-index: 30;
+  }
+  #criteriaPanel.open { transform: translateX(0); }
+  #criteriaPanel h2 {
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 18px; font-weight: 700; margin: 0 0 4px;
+  }
+  #criteriaPanel .sub { font-size: 12px; color: var(--text-3); margin-bottom: 16px; }
+  #criteriaPanel ol { list-style: none; margin: 0; padding: 0; counter-reset: item; }
+  #criteriaPanel li {
+    font-size: 13.5px; line-height: 1.45; color: var(--text-2);
+    padding: 9px 0; border-bottom: 1px solid var(--border);
+  }
+  #criteriaPanel li b { color: var(--text); font-family: "IBM Plex Mono", monospace; font-weight: 600; margin-right: 6px; }
+  #scrim {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 25;
+  }
+  #scrim.open { opacity: 1; pointer-events: auto; }
+
+  #creditsPanel {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(380px, 88vw);
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    padding: calc(18px + env(safe-area-inset-top,0px)) 0 calc(18px + env(safe-area-inset-bottom,0px));
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.22s ease;
+    z-index: 30;
+    display: flex;
+    align-items: flex-start;
+  }
+  #creditsPanel.open { transform: translateX(0); }
+  .creditsCard { padding: 8px 22px 0; text-align: center; width: 100%; }
+  .creditsCard img {
+    width: 108px; height: 108px; border-radius: 50%;
+    object-fit: cover; object-position: center 18%;
+    border: 2px solid var(--accent);
+    margin: 4px auto 14px;
+    display: block;
+  }
+  .creditsCard h2 {
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 19px; font-weight: 700; margin: 0 0 4px; color: var(--text);
+  }
+  .creditsCard .role {
+    font-size: 12.5px; color: var(--accent); font-weight: 600;
+    margin-bottom: 16px; line-height: 1.4;
+  }
+  .creditsCard p {
+    font-size: 13.5px; line-height: 1.6; color: var(--text-2);
+    text-align: left; margin: 0 0 14px;
+  }
+  .creditsCard .signoff {
+    text-align: center; font-style: italic; color: var(--text-3); font-size: 12.5px;
+  }
+
+  /* ---------- Conversation ---------- */
+  main {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 22px 16px 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar) transparent;
+  }
+  main::-webkit-scrollbar { width: 8px; }
+  main::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 8px; }
+
+  .feed { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  .empty {
+    max-width: 560px; margin: 8vh auto; text-align: center;
+    color: var(--text-2);
+  }
+  .empty .glyph { font-size: 34px; margin-bottom: 10px; }
+  .empty h1 {
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 24px; font-weight: 700; color: var(--text); margin: 0 0 8px;
+  }
+  .empty p { font-size: 14.5px; line-height: 1.55; margin: 0 auto 4px; max-width: 440px; }
+  .empty .hint {
+    margin-top: 18px; font-size: 12.5px; color: var(--text-3);
+    border-top: 1px solid var(--border); padding-top: 14px;
+  }
+
+  .msg { display: flex; }
+  .msg.user { justify-content: flex-end; }
+  .msg.assistant { justify-content: flex-start; }
+
+  .bubble {
+    max-width: 88%;
+    border-radius: 12px;
+    padding: 12px 15px;
+    font-size: 14.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .msg.user .bubble {
+    background: var(--user-bubble);
+    color: var(--user-ink);
+    border-bottom-right-radius: 3px;
+  }
+  .msg.assistant .bubble {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-bottom-left-radius: 3px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    line-height: 1.62;
+    width: 100%;
+  }
+  .msg.assistant .bubble .think {
+    font-family: "Barlow", sans-serif;
+    font-style: italic;
+    color: var(--text-3);
+  }
+
+  .assistantWrap { max-width: 88%; width: 100%; }
+  .msgTools {
+    display: flex; gap: 8px; margin-top: 6px; padding-left: 2px;
+  }
+  .msgTools button {
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--text-3);
+    background: none; border: none; cursor: pointer; padding: 2px 4px;
+  }
+  .msgTools button:hover { color: var(--accent); }
+
+  .tag {
+    display: inline-block;
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    padding: 3px 8px; border-radius: 5px; margin-bottom: 6px;
+  }
+  .tag.novo { background: var(--panel-2); color: var(--text-2); border: 1px solid var(--border); }
+  .tag.atualizacao { background: var(--warn-bg); color: var(--warn); }
+  .tag.retificacao { background: var(--accent); color: var(--accent-ink); }
+
+  .errBubble {
+    border: 1px solid var(--warn);
+    background: var(--warn-bg);
+    color: var(--warn);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    max-width: 88%;
+  }
+
+  /* ---------- Composer ---------- */
+  footer {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  .composerWrap { max-width: 760px; margin: 0 auto; }
+
+  .chips { display: flex; gap: 7px; margin-bottom: 9px; flex-wrap: wrap; }
+  .chip {
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+    padding: 5px 11px; border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text-2);
+    cursor: pointer;
+  }
+  .chip.active { border-color: var(--accent); color: var(--accent); background: transparent; }
+
+  .composer {
+    display: flex; align-items: flex-end; gap: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    border-radius: 14px;
+    padding: 8px 8px 8px 14px;
+  }
+  .composer:focus-within { border-color: var(--accent); }
+  #input {
+    flex: 1;
+    resize: none;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-family: "Barlow", sans-serif;
+    font-size: 14.5px;
+    line-height: 1.5;
+    max-height: 160px;
+    min-height: 22px;
+    padding: 6px 0;
+    outline: none;
+  }
+  #input::placeholder { color: var(--text-3); }
+
+  #sendBtn {
+    flex: 0 0 auto;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: none;
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  #sendBtn:disabled { opacity: 0.4; cursor: default; }
+  #sendBtn.stop { background: var(--warn); }
+
+  .foot-note {
+    text-align: center; font-size: 11px; color: var(--text-3);
+    margin-top: 9px; line-height: 1.4;
+  }
+
+  @media (max-width: 560px) {
+    .brand .title { font-size: 17px; }
+    .bubble, .assistantWrap { max-width: 96%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="mark">CBMMG · COBOM</span>
+    <div>
+      <span class="title">Anúncio de Ocorrência de Destaque</span>
+      <span class="ref">Memorando nº 3.200 — 17/08/2026 (SEI 1400.01.0050313/2026-06)</span>
+    </div>
+  </div>
+  <div class="headerRight">
+    <div class="status" id="statusPill"><span class="dot"></span><span id="statusText">PRONTO</span></div>
+    <button class="iconBtn" id="criteriaBtn" title="Ver critérios do Memorando 3.200">§</button>
+    <button class="iconBtn" id="creditsBtn" title="Sobre o sistema">♥</button>
+    <button class="iconBtn" id="resetBtn" title="Nova ocorrência">↺</button>
+  </div>
+</header>
+
+<div id="scrim"></div>
+<aside id="criteriaPanel">
+  <h2>Critérios de destaque</h2>
+  <div class="sub">Item 3 do Memorando nº 3.200 (17/08/2026)</div>
+  <ol id="criteriaList"></ol>
+</aside>
+
+<aside id="creditsPanel">
+  <div class="creditsCard">
+    <img id="creditsPhoto" alt="3º Sgt BM Luiz Eduardo" />
+    <h2>3º Sgt BM Luiz Eduardo</h2>
+    <div class="role">Idealizador do sistema de Anúncio de Ocorrência de Destaque</div>
+    <p>Este sistema nasceu da iniciativa dele: identificou a necessidade, construiu a primeira versão e abriu o caminho que esta ferramenta continua. O cuidado técnico e o compromisso com o trabalho do COBOM que ele colocou desde o início seguem como base de tudo o que vem sendo construído a partir daqui.</p>
+    <p class="signoff">Com gratidão e admiração de toda a equipe.</p>
+  </div>
+</aside>
+
+<main id="main">
+  <div class="feed" id="feed">
+    <div class="empty" id="emptyState">
+      <div class="glyph">🚒</div>
+      <h1>Descreva a ocorrência</h1>
+      <p>Cole ou digite as informações que a guarnição repassou — local, vítimas, viaturas, situação. A ferramenta identifica o enquadramento no Memorando nº 3.200 e monta o anúncio no modelo padrão.</p>
+      <p>Para atualizar ou retificar um anúncio já enviado nesta conversa, use os atalhos abaixo do campo de texto.</p>
+      <div class="hint">Ferramenta de apoio — revise sempre antes de enviar pelo canal oficial do COBOM.</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="composerWrap">
+    <div class="chips">
+      <button class="chip active" data-tipo="Novo anúncio">Novo anúncio</button>
+      <button class="chip" data-tipo="Atualização">Atualização</button>
+      <button class="chip" data-tipo="Retificação">Retificação</button>
+    </div>
+    <div class="composer">
+      <textarea id="input" rows="1" placeholder="Ex.: Incêndio em galpão na Av. Amazonas, BH. Vítima com queimaduras conduzida ao PS. 3 viaturas, 9 militares. Ainda em atendimento."></textarea>
+      <button id="sendBtn" title="Enviar">➤</button>
+    </div>
+    <div class="foot-note">O texto gerado é um rascunho — confira dados, enquadramento e pendências antes de anunciar oficialmente.</div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var EDGE_FUNCTION_URL = "https://aqvlavojjretarmllkwp.functions.supabase.co/gerar-anuncio"; // TODO: cole aqui a URL da sua Edge Function
+
+  var CRITERIA = [
+    ["3.1", "Acidente aeronáutico, ferroviário ou aquaviário."],
+    ["3.2", "Incêndio urbano multiagência em edificação de grande relevância (conjunto arquitetônico, universidade, shopping, aeroporto, hospital etc.) e/ou que gere evacuação de grande público."],
+    ["3.3", "Incêndio urbano ou florestal com vítima atendida e/ou conduzida a unidade de saúde."],
+    ["3.4", "Incêndio em ônibus com indícios de crime."],
+    ["3.5", "Incêndio em edificação histórica."],
+    ["3.6", "Interdição/Embargo total em evento temporário ou edificação."],
+    ["3.7", "Produtos perigosos: vítima atendida, risco ambiental, fechamento de rodovia, ou risco de explosão/intoxicação."],
+    ["3.8", "Ocorrência que exija SCO, ou resgate/recuperação de vítima acima de 3h de trabalho."],
+    ["3.9", "Envolve autoridade civil/militar, pessoa pública, turista estrangeiro (agravo à saúde), militar do CBMMG (serviço, óbito ou agravo), militar de outra instituição em serviço, ou múltiplas vítimas acima da capacidade local."],
+    ["3.10", "Potencial de repercussão estratégica, política, institucional ou midiática."],
+    ["3.11", "Inundação, enxurrada ou alagamento com vítima em óbito."],
+    ["3.12", "Risco para edificação ou área que exija evacuação."],
+    ["3.13", "Colapso de edificação ou rompimento de barragem."],
+    ["3.14", "Comprometimento de serviço essencial que afete a habitabilidade da população."]
+  ];
+
+  var els = {
+    feed: document.getElementById("feed"),
+    main: document.getElementById("main"),
+    empty: document.getElementById("emptyState"),
+    input: document.getElementById("input"),
+    sendBtn: document.getElementById("sendBtn"),
+    statusPill: document.getElementById("statusPill"),
+    statusText: document.getElementById("statusText"),
+    resetBtn: document.getElementById("resetBtn"),
+    criteriaBtn: document.getElementById("criteriaBtn"),
+    criteriaPanel: document.getElementById("criteriaPanel"),
+    criteriaList: document.getElementById("criteriaList"),
+    creditsBtn: document.getElementById("creditsBtn"),
+    creditsPanel: document.getElementById("creditsPanel"),
+    creditsPhoto: document.getElementById("creditsPhoto"),
+    scrim: document.getElementById("scrim"),
+    chips: document.querySelectorAll(".chip")
+  };
+
+  CRITERIA.forEach(function (c) {
+    var li = document.createElement("li");
+    li.innerHTML = "<b>" + c[0] + "</b>" + c[1];
+    els.criteriaList.appendChild(li);
+  });
+
+  var turns = [];
+  var busy = false;
+  var currentTipo = "Novo anúncio";
+  var abortCtl = null;
+
+  function setStatus(text, isBusy) {
+    els.statusText.textContent = text;
+    els.statusPill.classList.toggle("busy", !!isBusy);
+  }
+
+  function scrollToBottom() {
+    requestAnimationFrame(function () {
+      els.main.scrollTop = els.main.scrollHeight;
+    });
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Renders Telegram-style *bold* markers as <b> for preview, without
+  // touching the raw text kept for copying (that stays with the asterisks
+  // Telegram itself needs).
+  function renderTelegramPreview(bubble, rawText) {
+    bubble.setAttribute("data-raw", rawText);
+    var html = escapeHtml(rawText).replace(/\*([^\n*]+)\*/g, "<b>$1</b>");
+    bubble.innerHTML = html;
+  }
+
+  function addUserBubble(text) {
+    els.empty.style.display = "none";
+    var row = document.createElement("div");
+    row.className = "msg user";
+    var bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    els.feed.appendChild(row);
+    scrollToBottom();
+  }
+
+  function addAssistantBubble() {
+    var row = document.createElement("div");
+    row.className = "msg assistant";
+    var wrap = document.createElement("div");
+    wrap.className = "assistantWrap";
+    var bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.innerHTML = '<span class="think">Pensando…</span>';
+    wrap.appendChild(bubble);
+
+    var tools = document.createElement("div");
+    tools.className = "msgTools";
+    var copyBtn = document.createElement("button");
+    copyBtn.textContent = "COPIAR";
+    copyBtn.onclick = function () {
+      var text = bubble.getAttribute("data-raw") || bubble.textContent;
+      navigator.clipboard.writeText(text).then(function () {
+        copyBtn.textContent = "COPIADO";
+        setTimeout(function () { copyBtn.textContent = "COPIAR"; }, 1500);
+      });
+    };
+    tools.appendChild(copyBtn);
+    wrap.appendChild(tools);
+
+    row.appendChild(wrap);
+    els.feed.appendChild(row);
+    scrollToBottom();
+    return bubble;
+  }
+
+  function addErrorBubble(msg) {
+    var row = document.createElement("div");
+    row.className = "msg assistant";
+    var bubble = document.createElement("div");
+    bubble.className = "errBubble";
+    bubble.textContent = msg;
+    row.appendChild(bubble);
+    els.feed.appendChild(row);
+    scrollToBottom();
+  }
+
+  function errorCopy(code) {
+    switch (code) {
+      case "invalid_request": return "Requisição inválida — recarregue a página e tente de novo.";
+      case "server_misconfigured": return "A Edge Function está sem a chave do Gemini configurada (GEMINI_API_KEY). Avise quem administra o Supabase do projeto.";
+      case "upstream_error": return "A API do Gemini recusou ou falhou a chamada. Tente novamente em instantes.";
+      case "empty_completion": return "Não foi possível gerar uma resposta. Tente descrever a ocorrência com mais detalhes.";
+      case "network_error": return "Não foi possível conectar à Edge Function. Confira a URL configurada e sua conexão.";
+      case "cancelled": return "";
+      default: return "Falha temporária ao gerar o anúncio. Tente novamente.";
+    }
+  }
+
+  function autoResize() {
+    els.input.style.height = "auto";
+    els.input.style.height = Math.min(els.input.scrollHeight, 160) + "px";
+  }
+  els.input.addEventListener("input", autoResize);
+  els.input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+
+  els.chips.forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      els.chips.forEach(function (c) { c.classList.remove("active"); });
+      chip.classList.add("active");
+      currentTipo = chip.getAttribute("data-tipo");
+    });
+  });
+
+  els.creditsPhoto.src = "assets/luiz-eduardo.png";
+
+  els.criteriaBtn.addEventListener("click", function () {
+    els.criteriaPanel.classList.add("open");
+    els.scrim.classList.add("open");
+  });
+  els.creditsBtn.addEventListener("click", function () {
+    els.creditsPanel.classList.add("open");
+    els.scrim.classList.add("open");
+  });
+  function closePanels() {
+    els.criteriaPanel.classList.remove("open");
+    els.creditsPanel.classList.remove("open");
+    els.scrim.classList.remove("open");
+  }
+  els.scrim.addEventListener("click", closePanels);
+
+  els.resetBtn.addEventListener("click", function () {
+    if (turns.length && !confirm("Iniciar uma nova ocorrência? A conversa atual será apagada.")) return;
+    turns = [];
+    els.feed.innerHTML = "";
+    els.feed.appendChild(els.empty);
+    els.empty.style.display = "";
+  });
+
+  async function send() {
+    if (busy) return;
+    var raw = els.input.value.trim();
+    if (!raw) return;
+
+    if (!EDGE_FUNCTION_URL || EDGE_FUNCTION_URL.indexOf("SEU_PROJECT_REF") !== -1) {
+      addErrorBubble("Configure EDGE_FUNCTION_URL no início do <script> com a URL real da sua Supabase Edge Function.");
+      return;
+    }
+
+    var messageForModel = raw;
+    if (currentTipo !== "Novo anúncio") {
+      messageForModel = "Tipo de Anúncio: " + currentTipo + "\n\n" + raw;
+    }
+
+    addUserBubble((currentTipo !== "Novo anúncio" ? "[" + currentTipo + "] " : "") + raw);
+    els.input.value = "";
+    autoResize();
+
+    turns.push({ role: "user", content: messageForModel });
+
+    busy = true;
+    els.sendBtn.disabled = false;
+    els.sendBtn.textContent = "■";
+    els.sendBtn.classList.add("stop");
+    setStatus("GERANDO", true);
+
+    var bubble = addAssistantBubble();
+    abortCtl = new AbortController();
+
+    var onStop = function () {
+      if (abortCtl) abortCtl.abort();
+    };
+    els.sendBtn.onclick = onStop;
+
+    try {
+      var res = await fetch(EDGE_FUNCTION_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: abortCtl.signal,
+        body: JSON.stringify({ turns: turns })
+      });
+
+      var data = null;
+      try { data = await res.json(); } catch (_e) { /* corpo vazio ou não-JSON */ }
+
+      if (!res.ok || !data || !data.text) {
+        var code = (data && data.error) || "upstream_error";
+        bubble.parentElement.remove();
+        addErrorBubble(errorCopy(code));
+        turns.pop(); // remove o turno do usuário que não teve resposta
+      } else {
+        renderTelegramPreview(bubble, data.text);
+        turns.push({ role: "assistant", content: data.text });
+      }
+    } catch (e) {
+      if (e && e.name === "AbortError") {
+        bubble.parentElement.remove();
+        turns.pop();
+      } else {
+        bubble.parentElement.remove();
+        addErrorBubble(errorCopy("network_error"));
+        turns.pop();
+      }
+    } finally {
+      busy = false;
+      els.sendBtn.disabled = false;
+      els.sendBtn.textContent = "➤";
+      els.sendBtn.classList.remove("stop");
+      els.sendBtn.onclick = send;
+      setStatus("PRONTO", false);
+      scrollToBottom();
+    }
+  }
+
+  els.sendBtn.addEventListener("click", send);
+})();
+</script>
+</body>
+</html>
