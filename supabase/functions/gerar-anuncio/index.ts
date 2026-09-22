@@ -188,26 +188,50 @@ Deno.serve(async (req: Request) => {
     };
   });
 
-  try {
-    const geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: RULES }] },
-        contents,
-        generationConfig: {
-          maxOutputTokens: 4096,
-          temperature: 0.4,
-          thinkingConfig: { thinkingLevel: "low" },
-        },
-      }),
-    });
+  const requestBody = JSON.stringify({
+    system_instruction: { parts: [{ text: RULES }] },
+    contents,
+    generationConfig: {
+      maxOutputTokens: 4096,
+      temperature: 0.4,
+      thinkingConfig: { thinkingLevel: "low" },
+    },
+  });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.error("Gemini API error:", geminiRes.status, errText);
+  try {
+    // O Gemini às vezes responde 503 "high demand" em picos de uso —
+    // é temporário do lado do Google, então tentamos de novo sozinhos
+    // (com uma pequena espera) antes de desistir e mostrar erro.
+    const MAX_ATTEMPTS = 3;
+    let geminiRes: Response | null = null;
+    let lastErrText = "";
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBody,
+      });
+
+      if (geminiRes.ok) break;
+
+      lastErrText = await geminiRes.text();
+      const retryable = geminiRes.status === 503 || geminiRes.status === 429;
+      console.error(
+        `Gemini API error (tentativa ${attempt}/${MAX_ATTEMPTS}):`,
+        geminiRes.status,
+        lastErrText,
+      );
+
+      if (!retryable || attempt === MAX_ATTEMPTS) break;
+      await new Promise((r) => setTimeout(r, attempt * 800)); // 800ms, depois 1600ms
+    }
+
+    if (!geminiRes || !geminiRes.ok) {
+      const status = geminiRes?.status;
+      const code = status === 503 || status === 429 ? "model_overloaded" : "upstream_error";
       return new Response(
-        JSON.stringify({ error: "upstream_error", status: geminiRes.status }),
+        JSON.stringify({ error: code, status }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
