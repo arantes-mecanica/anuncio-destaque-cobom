@@ -155,18 +155,28 @@
     70% { box-shadow: 0 0 0 6px rgba(73,195,138,0); }
     100% { box-shadow: 0 0 0 0 rgba(73,195,138,0); }
   }
-  .iconBtn {
+  .headerBtn {
+    display: flex; align-items: center; gap: 6px;
     border: 1px solid var(--border);
     background: var(--panel-2);
     color: var(--text-2);
-    width: 34px; height: 34px;
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
+    height: 36px;
+    padding: 0 13px;
+    border-radius: 20px;
     cursor: pointer;
-    font-size: 15px;
     flex: 0 0 auto;
+    font-family: "Barlow Condensed", sans-serif;
   }
-  .iconBtn:hover { border-color: var(--accent); color: var(--accent); }
+  .headerBtn:hover { border-color: var(--accent); color: var(--accent); background: var(--panel); }
+  .headerBtn .hbIcon { font-size: 16px; line-height: 1; }
+  .headerBtn .hbLabel {
+    font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  @media (max-width: 620px) {
+    .headerBtn { padding: 0; width: 36px; justify-content: center; }
+    .headerBtn .hbLabel { display: none; }
+  }
 
   /* ---------- Criteria drawer ---------- */
   #criteriaPanel {
@@ -341,6 +351,29 @@
   }
   .composerWrap { max-width: 760px; margin: 0 auto; }
 
+  .postGenToast {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateY(4px);
+    transition: max-height 0.25s ease, opacity 0.25s ease, transform 0.25s ease, margin 0.25s ease;
+    background: var(--warn-bg);
+    color: var(--warn);
+    border: 1px solid var(--warn);
+    border-radius: 10px;
+    font-size: 12.5px;
+    text-align: center;
+    padding: 0 12px;
+  }
+  .postGenToast.show {
+    max-height: 60px;
+    opacity: 1;
+    transform: translateY(0);
+    padding: 8px 12px;
+    margin-bottom: 9px;
+  }
+  .postGenToast b { font-weight: 700; }
+
   .chips { display: flex; gap: 7px; margin-bottom: 9px; flex-wrap: wrap; }
   .chip {
     font-family: "Barlow Condensed", sans-serif;
@@ -472,9 +505,15 @@
   </div>
   <div class="headerRight">
     <div class="status" id="statusPill"><span class="dot"></span><span id="statusText">PRONTO</span></div>
-    <button class="iconBtn" id="criteriaBtn" title="Ver critérios do Memorando 3.200">§</button>
-    <button class="iconBtn" id="creditsBtn" title="Sobre o sistema">♥</button>
-    <button class="iconBtn" id="resetBtn" title="Nova ocorrência">↺</button>
+    <button class="headerBtn" id="criteriaBtn" title="Ver critérios do Memorando 3.200">
+      <span class="hbIcon">§</span><span class="hbLabel">Critérios</span>
+    </button>
+    <button class="headerBtn" id="creditsBtn" title="Sobre o sistema">
+      <span class="hbIcon">♥</span><span class="hbLabel">Sobre</span>
+    </button>
+    <button class="headerBtn" id="resetBtn" title="Nova ocorrência">
+      <span class="hbIcon">↺</span><span class="hbLabel">Novo</span>
+    </button>
   </div>
 </header>
 
@@ -509,6 +548,7 @@
 
 <footer>
   <div class="composerWrap">
+    <div class="postGenToast" id="postGenToast">Anúncio pronto. Pra outra ocorrência, clique em <b>↺ Novo</b> primeiro.</div>
     <div class="chips">
       <button class="chip active" data-tipo="Novo anúncio">Novo anúncio</button>
       <button class="chip" data-tipo="Atualização">Atualização</button>
@@ -569,7 +609,8 @@
     attachBtn: document.getElementById("attachBtn"),
     micBtn: document.getElementById("micBtn"),
     fileInput: document.getElementById("fileInput"),
-    attachStrip: document.getElementById("attachStrip")
+    attachStrip: document.getElementById("attachStrip"),
+    postGenToast: document.getElementById("postGenToast")
   };
 
   CRITERIA.forEach(function (c) {
@@ -710,6 +751,18 @@
   }
   els.scrim.addEventListener("click", closePanels);
 
+  // ---------- Faixa "anúncio pronto" ----------
+  var postGenToastTimer = null;
+  function showPostGenToast() {
+    if (postGenToastTimer) clearTimeout(postGenToastTimer);
+    els.postGenToast.classList.add("show");
+    postGenToastTimer = setTimeout(hidePostGenToast, 8000);
+  }
+  function hidePostGenToast() {
+    if (postGenToastTimer) { clearTimeout(postGenToastTimer); postGenToastTimer = null; }
+    els.postGenToast.classList.remove("show");
+  }
+
   els.resetBtn.addEventListener("click", function () {
     if (turns.length && !confirm("Iniciar uma nova ocorrência? A conversa atual será apagada.")) return;
     turns = [];
@@ -717,6 +770,7 @@
     els.feed.appendChild(els.empty);
     els.empty.style.display = "";
     clearAttachments();
+    hidePostGenToast();
   });
 
   // ---------- Anexos (imagem + PDF) ----------
@@ -904,6 +958,7 @@
 
   async function send() {
     if (busy) return;
+    hidePostGenToast();
     if (attachments.some(function (a) { return a.processing; })) {
       addErrorBubble("Aguarde o carregamento do(s) anexo(s) antes de enviar.");
       return;
@@ -971,6 +1026,7 @@
       } else {
         renderTelegramPreview(bubble, data.text);
         turns.push({ role: "assistant", content: data.text });
+        showPostGenToast();
       }
     } catch (e) {
       if (e && e.name === "AbortError") {
