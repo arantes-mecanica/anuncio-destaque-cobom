@@ -314,6 +314,31 @@
     border-radius: 16px; padding: 5px 12px; cursor: pointer; white-space: nowrap;
   }
   .openBtn:hover { background: var(--accent); color: var(--accent-ink); }
+  /* ---------- Confirmação (no lugar do confirm() nativo, que o navegador pode bloquear) ---------- */
+  #confirmBox {
+    position: fixed; inset: 0;
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 40;
+  }
+  #confirmBox.open { display: flex; }
+  .cbCard {
+    width: min(420px, 100%);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .cbCard p { margin: 0 0 16px; font-size: 15px; line-height: 1.45; color: var(--text); }
+  .cbActions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+  .cbActions button {
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 14px; font-weight: 700; letter-spacing: 0.04em;
+    border-radius: 18px; padding: 7px 16px; cursor: pointer;
+  }
+  #confirmNo { border: 1px solid var(--border); background: var(--panel-2); color: var(--text-2); }
+  #confirmYes { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); }
   @media (max-width: 560px) {
     table.hist .colUpd { display: none; }
     table.hist td, table.hist th { padding-left: 8px; padding-right: 8px; }
@@ -656,6 +681,16 @@
   <div class="hmBody" id="historyBody"></div>
 </section>
 
+<div id="confirmBox" role="alertdialog" aria-modal="true" aria-labelledby="confirmMsg">
+  <div class="cbCard">
+    <p id="confirmMsg"></p>
+    <div class="cbActions">
+      <button type="button" id="confirmNo">Cancelar</button>
+      <button type="button" id="confirmYes">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <aside id="creditsPanel">
   <div class="creditsCard">
     <img id="creditsPhoto" alt="3º Sgt BM Luiz Eduardo" />
@@ -763,7 +798,11 @@
     historyBody: document.getElementById("historyBody"),
     historyClose: document.getElementById("historyClose"),
     cbuToggle: document.getElementById("cbuToggle"),
-    cbuLabel: document.getElementById("cbuLabel")
+    cbuLabel: document.getElementById("cbuLabel"),
+    confirmBox: document.getElementById("confirmBox"),
+    confirmMsg: document.getElementById("confirmMsg"),
+    confirmYes: document.getElementById("confirmYes"),
+    confirmNo: document.getElementById("confirmNo")
   };
 
   CRITERIA.forEach(function (c) {
@@ -913,7 +952,32 @@
   }
   els.scrim.addEventListener("click", closePanels);
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") closePanels();
+    if (e.key !== "Escape") return;
+    if (confirmCb) fecharConfirmacao(false);
+    else closePanels();
+  });
+
+  // ---------- Confirmação ----------
+  // Substitui o confirm() nativo: alguns navegadores (e o próprio Chrome, depois
+  // de "impedir caixas de diálogo") devolvem false na hora sem mostrar nada.
+  var confirmCb = null;
+  function pedirConfirmacao(msg, rotuloOk, onOk) {
+    confirmCb = onOk;
+    els.confirmMsg.textContent = msg;
+    els.confirmYes.textContent = rotuloOk;
+    els.confirmBox.classList.add("open");
+    els.confirmYes.focus();
+  }
+  function fecharConfirmacao(ok) {
+    var cb = confirmCb;
+    confirmCb = null;
+    els.confirmBox.classList.remove("open");
+    if (ok && cb) cb();
+  }
+  els.confirmYes.addEventListener("click", function () { fecharConfirmacao(true); });
+  els.confirmNo.addEventListener("click", function () { fecharConfirmacao(false); });
+  els.confirmBox.addEventListener("click", function (e) {
+    if (e.target === els.confirmBox) fecharConfirmacao(false);
   });
 
   // ---------- Faixa "anúncio pronto" ----------
@@ -942,8 +1006,9 @@
 
   function doReset() {
     if (busy) return;
-    if (turns.length && !confirm("Iniciar uma nova ocorrência? A conversa atual será apagada.")) return;
-    clearConversation();
+    if (!turns.length) { clearConversation(); return; }
+    pedirConfirmacao("Iniciar uma nova ocorrência? A conversa atual será apagada da tela.",
+      "Nova ocorrência", clearConversation);
   }
   els.resetBtn.addEventListener("click", doReset);
   els.resetBtnBig.addEventListener("click", doReset);
@@ -1104,7 +1169,13 @@
   // envio (Atualização/Retificação) parte dele e sobrescreve o mesmo registro.
   function openFromHistory(a) {
     if (busy) return;
-    if (turns.length && !confirm("Abrir este anúncio? A conversa atual será apagada.")) return;
+    if (!turns.length) { carregarDoHistorico(a); return; }
+    pedirConfirmacao("Abrir este anúncio? A conversa atual será apagada da tela.", "Abrir anúncio",
+      function () { carregarDoHistorico(a); });
+  }
+
+  function carregarDoHistorico(a) {
+    if (busy) return;
     clearConversation();
     currentAnuncioId = a.id;
     setDestaque(!!a.destaque_cbu);
