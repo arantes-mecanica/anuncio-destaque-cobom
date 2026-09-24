@@ -25,7 +25,7 @@ Llama 3.3 70B. Comparado com as alternativas já testadas neste projeto:
   (na faixa de 30/minuto e 1.000/dia), reduzindo os erros de "alta
   demanda" que tínhamos antes.
 
-**Limitação atual:** o modelo usado (`llama-3.3-70b-versatile`) só lê
+**Limitação atual:** o modelo usado (`openai/gpt-oss-120b`) só lê
 texto — não processa foto nem PDF. O botão de anexo no app fica
 desabilitado por enquanto. Trocar por um modelo da Groq com visão é um
 possível próximo passo (ver seção final).
@@ -157,7 +157,7 @@ localmente.
 
 ## O que ainda não tem (próximos passos possíveis)
 
-- **Anexar foto/PDF de novo**: trocar `llama-3.3-70b-versatile` por um
+- **Anexar foto/PDF de novo**: trocar `openai/gpt-oss-120b` por um
   modelo da Groq com visão (ex.: linhagem Llama 4 Scout/Maverick,
   conferir nome atual em console.groq.com/docs/models) e reativar o
   botão de anexo, que já está implementado no front-end (só

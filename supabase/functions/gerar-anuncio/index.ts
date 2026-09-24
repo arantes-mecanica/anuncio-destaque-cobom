@@ -81,7 +81,8 @@ Em ocorrências envolvendo militar do CBMMG, autoridade civil/militar, pessoa p�
 # FORMATO FINAL
 Responda SOMENTE com o bloco do anúncio, pronto para colar no Telegram — sem cabeçalhos, sem título de seção, sem comentário em volta (isso vale mesmo com ENQUADRAMENTO "a confirmar", que fica dentro do próprio campo). Acrescente PENDÊNCIAS DE PREENCHIMENTO só se houver campo faltante, e OBSERVAÇÃO DE PRIVACIDADE só se aplicável — nessa ordem, depois do anúncio. Nunca invente informação para completar o modelo; nunca omita um campo obrigatório; sempre reavalie o enquadramento a cada mensagem, inclusive em atualizações.`;
 
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL_TEXT = "openai/gpt-oss-120b";
+const GROQ_MODEL_VISION = "qwen/qwen3.8-27b"; // lê texto + imagem (até 3 por requisição)
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 // Ajuste para o(s) domínio(s) reais do seu front-end assim que estiver no ar
@@ -100,10 +101,15 @@ interface Turn {
   content: string;
 }
 
-// NOTA: o modelo de texto da Groq usado aqui (llama-3.3-70b-versatile) não
-// lê imagem nem PDF — só texto. Anexos ainda chegam do front-end (fica pra
-// uma etapa futura trocar por um modelo com visão da Groq), então por
-// enquanto avisamos com um erro claro em vez de ignorar silenciosamente.
+interface Attachment {
+  mimeType: string; // image/jpeg, image/png, image/webp ou image/gif — nunca PDF (o
+  // front-end já extrai texto ou converte páginas em imagem antes de mandar aqui).
+  data: string; // base64, sem o prefixo "data:...;base64,"
+}
+
+const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const MAX_ATTACHMENTS = 3; // limite do modelo de visão da Groq (qwen/qwen3.8-27b)
+const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -118,26 +124,30 @@ Deno.serve(async (req: Request) => {
   }
 
   let turns: Turn[];
-  let hasAttachments = false;
+  let attachments: Attachment[];
   try {
     const body = await req.json();
     turns = body.turns;
-    hasAttachments = Array.isArray(body.attachments) && body.attachments.length > 0;
+    attachments = Array.isArray(body.attachments) ? body.attachments : [];
     if (!Array.isArray(turns) || turns.length === 0) {
       throw new Error("empty");
     }
     if (turns[turns.length - 1].role !== "user") {
       throw new Error("must_end_on_user");
     }
+    if (attachments.length > MAX_ATTACHMENTS) {
+      throw new Error("too_many_attachments");
+    }
+    for (const a of attachments) {
+      if (!a || typeof a.data !== "string" || !ALLOWED_MIME.has(a.mimeType)) {
+        throw new Error("bad_attachment");
+      }
+      if (a.data.length > (MAX_ATTACHMENT_BYTES * 4) / 3) {
+        throw new Error("attachment_too_large");
+      }
+    }
   } catch (_e) {
     return new Response(JSON.stringify({ error: "invalid_request" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  if (hasAttachments) {
-    return new Response(JSON.stringify({ error: "attachments_unsupported" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -151,15 +161,29 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // Formato OpenAI-padrão: role "system" para as regras, e os turnos do
-  // usuário já vêm como "user"/"assistant" — sem precisar converter nada.
+  // Formato OpenAI-padrão: role "system" para as regras. Anexos (imagem)
+  // só valem para a ÚLTIMA mensagem do usuário — mesmo comportamento das
+  // versões anteriores, que também não reenviam anexos de turnos antigos.
   const messages = [
     { role: "system", content: RULES },
-    ...turns.map((t) => ({ role: t.role, content: t.content })),
+    ...turns.map((t, i) => {
+      const isLastUserTurn = i === turns.length - 1 && t.role === "user";
+      if (isLastUserTurn && attachments.length > 0) {
+        // deno-lint-ignore no-explicit-any
+        const content: any[] = [{ type: "text", text: t.content }];
+        for (const a of attachments) {
+          content.push({ type: "image_url", image_url: { url: `data:${a.mimeType};base64,${a.data}` } });
+        }
+        return { role: t.role, content };
+      }
+      return { role: t.role, content: t.content };
+    }),
   ];
 
+  const model = attachments.length > 0 ? GROQ_MODEL_VISION : GROQ_MODEL_TEXT;
+
   const requestBody = JSON.stringify({
-    model: GROQ_MODEL,
+    model,
     messages,
     max_tokens: 2048,
     temperature: 0.4,
