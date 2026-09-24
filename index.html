@@ -606,7 +606,12 @@
 (function () {
   "use strict";
 
-  var EDGE_FUNCTION_URL = "https://aqvlavojjretarmllkwp.functions.supabase.co/gerar-anuncio";
+  // Aberto em localhost/127.0.0.1 → usa a função local (container Deno
+  // na porta 54331, ver README); em qualquer outro host, a de produção.
+  var IS_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  var EDGE_FUNCTION_URL = IS_LOCAL
+    ? "http://localhost:54331/functions/v1/gerar-anuncio"
+    : "https://aqvlavojjretarmllkwp.functions.supabase.co/gerar-anuncio";
 
   var CRITERIA = [
     ["3.1", "Acidente aeronáutico, ferroviário ou aquaviário."],
@@ -816,7 +821,7 @@
   // Imagem vai direto pro modelo com visão da Groq (qwen/qwen3.8-27b, até
   // 3 imagens por requisição). PDF não é lido nativamente por nenhum
   // modelo da Groq: se tiver camada de texto, extraímos com pdf.js; se
-  // for escaneado (sem texto), transformamos as páginas em imagem.
+  // for escaneado (sem texto), fazemos OCR no navegador (Tesseract.js).
   if (typeof pdfjsLib !== "undefined") {
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
   }
@@ -827,6 +832,27 @@
   var MAX_IMAGE_SLOTS = 3; // limite do modelo de visão da Groq (qwen/qwen3.8-27b)
   var MAX_ATTACHMENTS_TOTAL = 5; // inclui entradas de texto extraído de PDF
   var MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+  var MAX_PDF_PAGES = 12;
+
+  // Tesseract.js (OCR) só é baixado na primeira vez que alguém anexa um PDF
+  // escaneado; o worker com o idioma português fica reaproveitado depois.
+  var ocrWorkerPromise = null;
+  function getOcrWorker() {
+    if (!ocrWorkerPromise) {
+      ocrWorkerPromise = new Promise(function (resolve, reject) {
+        if (window.Tesseract) return resolve();
+        var s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      }).then(function () {
+        return Tesseract.createWorker("por");
+      });
+      ocrWorkerPromise.catch(function () { ocrWorkerPromise = null; }); // permite tentar de novo
+    }
+    return ocrWorkerPromise;
+  }
 
   function renderAttachStrip() {
     els.attachStrip.innerHTML = "";
@@ -845,7 +871,7 @@
       }
       var name = document.createElement("span");
       name.className = "attachName";
-      name.textContent = a.processing ? (a.name + " — lendo…") : a.name;
+      name.textContent = a.processing ? (a.name + " — " + (a.progress || "lendo") + "…") : a.name;
       chip.appendChild(name);
       var rm = document.createElement("button");
       rm.type = "button";
@@ -959,7 +985,7 @@
 
       var buf = await file.arrayBuffer();
       var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-      var maxPages = Math.min(pdf.numPages, 8);
+      var maxPages = Math.min(pdf.numPages, MAX_PDF_PAGES);
       var textParts = [];
       var totalChars = 0;
 
@@ -982,37 +1008,32 @@
         return;
       }
 
-      // PDF escaneado (sem texto útil): converte páginas em imagem — o
-      // modelo de visão da Groq só aceita imagem, não PDF.
-      var remainingSlots = MAX_IMAGE_SLOTS - countImageSlots();
-      attachments = attachments.filter(function (a) { return a.id !== id; });
-      if (remainingSlots <= 0) {
+      // PDF escaneado (sem texto útil, caso dos relatórios do SISP): OCR no
+      // próprio navegador com Tesseract.js e envio como texto. Mandar as
+      // páginas como imagem esbarra no limite de 3 imagens do modelo de
+      // visão, e relatórios de ocorrência maior passam de 5 páginas.
+      var worker = await getOcrWorker();
+      var ocrParts = [];
+      for (var r = 1; r <= maxPages; r++) {
+        entry.progress = "OCR pág. " + r + "/" + maxPages;
         renderAttachStrip();
-        addErrorBubble("PDF \"" + file.name + "\" parece ser escaneado, e o limite de " + MAX_IMAGE_SLOTS + " imagens já foi atingido.");
-        return;
-      }
-      var pagesToRender = Math.min(maxPages, remainingSlots);
-
-      for (var r = 1; r <= pagesToRender; r++) {
         var pg = await pdf.getPage(r);
-        var viewport = pg.getViewport({ scale: 1.5 });
+        var viewport = pg.getViewport({ scale: 2.5 }); // resolução maior = OCR mais preciso
         var canvas = document.createElement("canvas");
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         await pg.render({ canvasContext: canvas.getContext("2d"), viewport: viewport }).promise;
-        var dataUrl = canvas.toDataURL("image/png");
-        var base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
-        var blob = await new Promise(function (resolve) { canvas.toBlob(resolve, "image/png"); });
-        attachments.push({
-          id: ++attachIdSeq,
-          kind: "image",
-          name: file.name + " — pág. " + r,
-          mimeType: "image/png",
-          base64: base64,
-          previewUrl: URL.createObjectURL(blob),
-          processing: false
-        });
+        var ocr = await worker.recognize(canvas);
+        var ocrText = (ocr.data.text || "").trim();
+        if (ocrText) ocrParts.push("[Página " + r + "]\n" + ocrText);
       }
+      if (!ocrParts.length) throw new Error("OCR sem texto");
+      entry.processing = false;
+      entry.progress = null;
+      entry.pdfText = "[Texto extraído por OCR do PDF anexado \"" + file.name + "\" — " + maxPages +
+        (pdf.numPages > maxPages ? " de " + pdf.numPages : "") + " página(s); " +
+        "pode conter erros de leitura, especialmente em cabeçalhos de tabela]\n" +
+        ocrParts.join("\n\n") + "\n[Fim do PDF anexado]";
       renderAttachStrip();
     } catch (err) {
       attachments = attachments.filter(function (a) { return a.id !== id; });
