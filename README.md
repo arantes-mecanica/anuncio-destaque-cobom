@@ -12,7 +12,7 @@ evolução do sistema que ele criou.
 ## Por que Groq
 
 O texto é gerado pela **API gratuita da Groq**, rodando o modelo
-Llama 3.3 70B. Comparado com as alternativas já testadas neste projeto:
+`openai/gpt-oss-120b` (modelo aberto da OpenAI). Comparado com as alternativas já testadas neste projeto:
 
 - **Sem custo**, sem cartão de crédito.
 - **Não usa os dados para treinar modelo, nem no nível gratuito nem no
@@ -140,10 +140,6 @@ de novo.
 
 ## Testando localmente antes de publicar
 
-```bash
-npx supabase functions serve gerar-anuncio --env-file supabase/.env.local
-```
-
 Crie `supabase/.env.local` (não versionar — já está no `.gitignore`)
 com:
 
@@ -151,9 +147,24 @@ com:
 GROQ_API_KEY=sua-chave-aqui
 ```
 
-E aponte `EDGE_FUNCTION_URL` no `index.html` para
-`http://localhost:54321/functions/v1/gerar-anuncio` enquanto testa
-localmente.
+Suba a função num container Deno (só precisa do Docker — não precisa
+do `supabase start`, que baixa a stack inteira do Supabase):
+
+```bash
+docker run -d --name cobom-fn -p 54331:8000 --env-file supabase/.env.local -v "${PWD}/supabase/functions:/fn" denoland/deno:latest run --allow-net --allow-env /fn/gerar-anuncio/index.ts
+```
+
+Depois de editar o `index.ts`, rode `docker restart cobom-fn` (o `--watch`
+do Deno não funciona aqui: o Docker no Windows não repassa ao container
+os eventos de alteração de arquivo). Logs:
+`docker logs -f cobom-fn`. Depois de alterar o `.env.local`, recrie o
+container (`docker rm -f cobom-fn` e rode o comando de novo).
+
+Sirva o `index.html` em `localhost` (ex.: XAMPP em
+`http://localhost/cobom/`). Quando aberto em `localhost`/`127.0.0.1`, o
+front-end usa sozinho a função local (`http://localhost:54331/...`);
+em qualquer outro domínio, usa a de produção. Não precisa editar
+`EDGE_FUNCTION_URL`.
 
 ## O que ainda não tem (próximos passos possíveis)
 
