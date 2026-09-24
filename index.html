@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Anúncio de Ocorrência de Destaque · CBMMG</title>
+<title>Anúncio de Ocorrência · CBMMG</title>
 <link rel="icon" type="image/png" href="assets/favicon-cbmmg.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -158,9 +158,27 @@
 
   .composerStatusBar {
     display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 10px;
   }
+  .cbuToggle {
+    display: flex; align-items: center; gap: 8px;
+    height: 44px;
+    padding: 0 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 22px;
+    background: var(--panel-2);
+    color: var(--text-2);
+    cursor: pointer;
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700; font-size: 15px; letter-spacing: 0.02em;
+    user-select: none;
+  }
+  .cbuToggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  .cbuToggle.on { border-color: var(--accent); color: var(--accent); background: transparent; }
+  .cbuToggle.disabled { opacity: 0.5; cursor: default; }
+  .cbuToggle.disabled input { cursor: default; }
   .statusBig {
     font-size: 15px;
     padding: 10px 16px;
@@ -232,6 +250,75 @@
     padding: 9px 0; border-bottom: 1px solid var(--border);
   }
   #criteriaPanel li b { color: var(--text); font-family: "IBM Plex Mono", monospace; font-weight: 600; margin-right: 6px; }
+  /* ---------- Histórico (modal) ---------- */
+  #historyModal {
+    position: fixed;
+    left: 50%; top: 50%;
+    width: min(820px, calc(100vw - 32px));
+    max-height: calc(100dvh - 64px);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: flex; flex-direction: column;
+    transform: translate(-50%, -47%);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 30;
+  }
+  #historyModal.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%); }
+  .hmHead {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hmHead h2 {
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 19px; font-weight: 700; margin: 0 0 2px;
+  }
+  .hmHead .sub { font-size: 12px; color: var(--text-3); }
+  .hmClose {
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--text-2);
+    width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 14px; flex: 0 0 auto;
+  }
+  .hmClose:hover { border-color: var(--accent); color: var(--accent); }
+  .hmBody { overflow-y: auto; }
+  .histMsg { padding: 28px 18px; text-align: center; color: var(--text-2); font-size: 14px; }
+  table.hist { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.hist th {
+    position: sticky; top: 0;
+    background: var(--panel-2);
+    text-align: left;
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+    color: var(--text-3);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.hist td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text); }
+  table.hist tr.row { cursor: pointer; }
+  table.hist tr.row:hover td { background: var(--panel-2); }
+  table.hist .small { display: block; font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  table.hist .nowrap { white-space: nowrap; }
+  .kind {
+    display: inline-block;
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em;
+    padding: 3px 8px; border-radius: 5px; white-space: nowrap;
+  }
+  .kind.relevancia { background: var(--panel-2); color: var(--text-2); border: 1px solid var(--border); }
+  .kind.destaque { background: var(--accent); color: var(--accent-ink); }
+  .openBtn {
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em;
+    border: 1px solid var(--accent); color: var(--accent); background: transparent;
+    border-radius: 16px; padding: 5px 12px; cursor: pointer; white-space: nowrap;
+  }
+  .openBtn:hover { background: var(--accent); color: var(--accent-ink); }
+  @media (max-width: 560px) {
+    table.hist .colUpd { display: none; }
+    table.hist td, table.hist th { padding-left: 8px; padding-right: 8px; }
+  }
+
   #scrim {
     position: fixed; inset: 0; background: rgba(0,0,0,0.35);
     opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 25;
@@ -350,6 +437,7 @@
     background: none; border: none; cursor: pointer; padding: 2px 4px;
   }
   .msgTools button:hover { color: var(--accent); }
+  .msgTools .msgNote { font-size: 11.5px; color: var(--warn); padding: 2px 4px; }
 
   .tag {
     display: inline-block;
@@ -530,11 +618,14 @@
   <div class="brand">
     <span class="mark">CBMMG · COBOM</span>
     <div>
-      <span class="title">Anúncio de Ocorrência de Destaque</span>
+      <span class="title">Anúncio de Ocorrência</span>
       <span class="ref">Memorando nº 3.200 — 17/08/2026 (SEI 1400.01.0050313/2026-06)</span>
     </div>
   </div>
   <div class="headerRight">
+    <button class="headerBtn" id="historyBtn" title="Anúncios das últimas 48h, para atualizar ou retificar">
+      <span class="hbIcon">🕘</span><span class="hbLabel">Histórico</span>
+    </button>
     <button class="headerBtn" id="criteriaBtn" title="Ver critérios do Memorando 3.200">
       <span class="hbIcon">§</span><span class="hbLabel">Critérios</span>
     </button>
@@ -554,6 +645,17 @@
   <ol id="criteriaList"></ol>
 </aside>
 
+<section id="historyModal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+  <div class="hmHead">
+    <div>
+      <h2 id="historyTitle">Histórico de anúncios</h2>
+      <div class="sub">Ficam disponíveis por 48h a partir da data do fato. Abra um anúncio para atualizar, retificar ou registrar a deliberação do CBU.</div>
+    </div>
+    <button class="hmClose" id="historyClose" type="button" title="Fechar">✕</button>
+  </div>
+  <div class="hmBody" id="historyBody"></div>
+</section>
+
 <aside id="creditsPanel">
   <div class="creditsCard">
     <img id="creditsPhoto" alt="3º Sgt BM Luiz Eduardo" />
@@ -570,7 +672,7 @@
       <div class="glyph">🚒</div>
       <h1>Descreva a ocorrência</h1>
       <p>Cole ou digite as informações que a guarnição repassou — local, vítimas, viaturas, situação. A ferramenta identifica o enquadramento no Memorando nº 3.200 e monta o anúncio no modelo padrão.</p>
-      <p>Para atualizar ou retificar um anúncio já enviado nesta conversa, use os atalhos abaixo do campo de texto.</p>
+      <p>O anúncio sai como <b>Relevância</b>. Depois que o CBU deliberar, marque <b>CBU deliberou destaque</b> para trocar o título. Para atualizar ou retificar um anúncio das últimas 48h, abra-o pelo <b>Histórico</b>.</p>
       <div class="hint">Ferramenta de apoio — revise sempre antes de enviar pelo canal oficial do COBOM.</div>
     </div>
   </div>
@@ -582,6 +684,9 @@
       <button class="bigResetBtn" id="resetBtnBig" type="button">
         <span class="hbIcon">↺</span> Nova ocorrência
       </button>
+      <label class="cbuToggle" id="cbuLabel" title="Marque depois que o CBU deliberar que a ocorrência é Destaque: o título do anúncio muda para OCORRÊNCIA DE DESTAQUE.">
+        <input type="checkbox" id="cbuToggle"> CBU deliberou destaque
+      </label>
       <div class="status statusBig" id="statusPill"><span class="dot"></span><span id="statusText">PRONTO</span></div>
     </div>
     <div class="postGenToast" id="postGenToast">Anúncio pronto. Pra outra ocorrência, clique em <b>↺ Novo</b> primeiro.</div>
@@ -652,7 +757,13 @@
     micBtn: document.getElementById("micBtn"),
     fileInput: document.getElementById("fileInput"),
     attachStrip: document.getElementById("attachStrip"),
-    postGenToast: document.getElementById("postGenToast")
+    postGenToast: document.getElementById("postGenToast"),
+    historyBtn: document.getElementById("historyBtn"),
+    historyModal: document.getElementById("historyModal"),
+    historyBody: document.getElementById("historyBody"),
+    historyClose: document.getElementById("historyClose"),
+    cbuToggle: document.getElementById("cbuToggle"),
+    cbuLabel: document.getElementById("cbuLabel")
   };
 
   CRITERIA.forEach(function (c) {
@@ -665,6 +776,8 @@
   var busy = false;
   var currentTipo = "Novo anúncio";
   var abortCtl = null;
+  var currentAnuncioId = null; // registro no histórico (tabela anuncios) desta conversa
+  var destaqueCbu = false;     // o CBU deliberou destaque para esta ocorrência?
 
   function setStatus(text, isBusy) {
     els.statusText.textContent = text;
@@ -751,6 +864,8 @@
       case "model_overloaded": return "A Groq está com alta demanda no momento (já tentamos de novo automaticamente). Aguarde um pouco e tente enviar de novo.";
       case "empty_completion": return "Não foi possível gerar uma resposta. Tente descrever a ocorrência com mais detalhes.";
       case "network_error": return "Não foi possível conectar à Edge Function. Confira a URL configurada e sua conexão.";
+      case "historico_indisponivel": return "Histórico indisponível no momento (banco de dados não configurado ou fora do ar). A geração de anúncios continua funcionando.";
+      case "not_found": return "Este anúncio não está mais no histórico (já passaram 48h da data do fato). Gere um novo anúncio.";
       case "cancelled": return "";
       default: return "Falha temporária ao gerar o anúncio. Tente novamente.";
     }
@@ -768,11 +883,15 @@
     }
   });
 
+  function selectChip(tipo) {
+    els.chips.forEach(function (c) {
+      c.classList.toggle("active", c.getAttribute("data-tipo") === tipo);
+    });
+    currentTipo = tipo;
+  }
   els.chips.forEach(function (chip) {
     chip.addEventListener("click", function () {
-      els.chips.forEach(function (c) { c.classList.remove("active"); });
-      chip.classList.add("active");
-      currentTipo = chip.getAttribute("data-tipo");
+      selectChip(chip.getAttribute("data-tipo"));
     });
   });
 
@@ -789,9 +908,13 @@
   function closePanels() {
     els.criteriaPanel.classList.remove("open");
     els.creditsPanel.classList.remove("open");
+    els.historyModal.classList.remove("open");
     els.scrim.classList.remove("open");
   }
   els.scrim.addEventListener("click", closePanels);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closePanels();
+  });
 
   // ---------- Faixa "anúncio pronto" ----------
   var postGenToastTimer = null;
@@ -805,17 +928,268 @@
     els.postGenToast.classList.remove("show");
   }
 
-  function doReset() {
-    if (turns.length && !confirm("Iniciar uma nova ocorrência? A conversa atual será apagada.")) return;
+  function clearConversation() {
     turns = [];
     els.feed.innerHTML = "";
     els.feed.appendChild(els.empty);
     els.empty.style.display = "";
     clearAttachments();
     hidePostGenToast();
+    currentAnuncioId = null;
+    setDestaque(false);
+    selectChip("Novo anúncio");
+  }
+
+  function doReset() {
+    if (busy) return;
+    if (turns.length && !confirm("Iniciar uma nova ocorrência? A conversa atual será apagada.")) return;
+    clearConversation();
   }
   els.resetBtn.addEventListener("click", doReset);
   els.resetBtnBig.addEventListener("click", doReset);
+
+  async function callFunction(payload, signal) {
+    var res = await fetch(EDGE_FUNCTION_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: signal,
+      body: JSON.stringify(payload)
+    });
+    var data = null;
+    try { data = await res.json(); } catch (_e) { /* corpo vazio ou não-JSON */ }
+    return { ok: res.ok, data: data };
+  }
+
+  // Tag acima da bolha do anúncio (reusa .tag), ex.: "DO HISTÓRICO".
+  function addTagAbove(bubble, cls, label) {
+    var tag = document.createElement("span");
+    tag.className = "tag " + cls;
+    tag.textContent = label;
+    bubble.parentElement.insertBefore(tag, bubble);
+  }
+
+  // ---------- Histórico (48h a partir da data do fato) ----------
+  function fmtDataHora(iso) {
+    return new Date(iso).toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+    });
+  }
+
+  function fmtHaQuanto(iso) {
+    var min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (min < 1) return "agora";
+    if (min < 60) return "há " + min + " min";
+    return "há " + Math.floor(min / 60) + "h" + (min % 60 ? String(min % 60).padStart(2, "0") : "");
+  }
+
+  function fmtExpira(iso) {
+    var h = Math.max(0, (new Date(iso).getTime() - Date.now()) / 3600000);
+    return h < 1 ? "expira em menos de 1h" : "expira em " + Math.floor(h) + "h";
+  }
+
+  function campoAnuncio(texto, rotulo) {
+    var m = texto.match(new RegExp("^[ \\t]*\\*?" + rotulo + ":\\*?[ \\t]*([^\\n]*)", "im"));
+    return m ? m[1].trim().replace(/\.$/, "") : "";
+  }
+
+  function sufixoTitulo(texto) {
+    var m = texto.match(/OCORR[ÊE]NCIA DE (?:DESTAQUE|RELEV[ÂA]NCIA)[ \t]*\*{0,2}[ \t]*([^*\n]*)/);
+    return m ? m[1].replace(/^[—–-]\s*/, "").trim() : "";
+  }
+
+  function openHistory() {
+    closePanels();
+    els.historyModal.classList.add("open");
+    els.scrim.classList.add("open");
+    loadHistory();
+  }
+  els.historyBtn.addEventListener("click", openHistory);
+  els.historyClose.addEventListener("click", closePanels);
+
+  function historyMsg(text) {
+    els.historyBody.innerHTML = "";
+    var div = document.createElement("div");
+    div.className = "histMsg";
+    div.textContent = text;
+    els.historyBody.appendChild(div);
+  }
+
+  async function loadHistory() {
+    historyMsg("Carregando…");
+    var r;
+    try {
+      r = await callFunction({ action: "listar" });
+    } catch (_e) {
+      historyMsg(errorCopy("network_error"));
+      return;
+    }
+    if (!r.ok || !r.data || !Array.isArray(r.data.anuncios)) {
+      historyMsg(errorCopy((r.data && r.data.error) || "historico_indisponivel"));
+      return;
+    }
+    var lista = r.data.anuncios;
+    if (!lista.length) {
+      historyMsg("Nenhum anúncio nas últimas 48h.");
+      return;
+    }
+
+    var table = document.createElement("table");
+    table.className = "hist";
+    table.innerHTML = "<thead><tr><th>DATA DO FATO</th><th>LOCAL / SÍNTESE</th><th>TIPO</th>" +
+      "<th class=\"colUpd\">ATUALIZADO</th><th></th></tr></thead>";
+    var tbody = document.createElement("tbody");
+
+    lista.forEach(function (a) {
+      var tr = document.createElement("tr");
+      tr.className = "row";
+
+      var tdData = document.createElement("td");
+      tdData.className = "nowrap";
+      tdData.textContent = a.data_fato ? fmtDataHora(a.data_fato) : "não informada";
+      var exp = document.createElement("span");
+      exp.className = "small";
+      exp.textContent = fmtExpira(a.expira_em);
+      tdData.appendChild(exp);
+
+      var tdLocal = document.createElement("td");
+      tdLocal.textContent = campoAnuncio(a.texto, "LOCAL") || "—";
+      var sintese = campoAnuncio(a.texto, "SÍNTESE DO FATO");
+      if (sintese) {
+        var sm = document.createElement("span");
+        sm.className = "small";
+        sm.textContent = sintese.length > 90 ? sintese.slice(0, 90) + "…" : sintese;
+        tdLocal.appendChild(sm);
+      }
+
+      var tdTipo = document.createElement("td");
+      var kind = document.createElement("span");
+      kind.className = "kind " + (a.destaque_cbu ? "destaque" : "relevancia");
+      kind.textContent = a.destaque_cbu ? "DESTAQUE" : "RELEVÂNCIA";
+      tdTipo.appendChild(kind);
+      var suf = sufixoTitulo(a.texto);
+      if (suf) {
+        var ss = document.createElement("span");
+        ss.className = "small";
+        ss.textContent = suf;
+        tdTipo.appendChild(ss);
+      }
+
+      var tdUpd = document.createElement("td");
+      tdUpd.className = "colUpd nowrap";
+      tdUpd.textContent = fmtHaQuanto(a.updated_at);
+
+      var tdBtn = document.createElement("td");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "openBtn";
+      btn.textContent = "Abrir";
+      tdBtn.appendChild(btn);
+
+      tr.appendChild(tdData);
+      tr.appendChild(tdLocal);
+      tr.appendChild(tdTipo);
+      tr.appendChild(tdUpd);
+      tr.appendChild(tdBtn);
+      tr.addEventListener("click", function () { openFromHistory(a); });
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    els.historyBody.innerHTML = "";
+    els.historyBody.appendChild(table);
+  }
+
+  // Carrega o anúncio escolhido como "último anúncio" da conversa: o próximo
+  // envio (Atualização/Retificação) parte dele e sobrescreve o mesmo registro.
+  function openFromHistory(a) {
+    if (busy) return;
+    if (turns.length && !confirm("Abrir este anúncio? A conversa atual será apagada.")) return;
+    clearConversation();
+    currentAnuncioId = a.id;
+    setDestaque(!!a.destaque_cbu);
+    turns = [
+      { role: "user", content: "(Anúncio recuperado do histórico — é o último anúncio desta ocorrência.)" },
+      { role: "assistant", content: a.texto }
+    ];
+    els.empty.style.display = "none";
+    var bubble = addAssistantBubble();
+    addTagAbove(bubble, "novo", "DO HISTÓRICO");
+    renderTelegramPreview(bubble, a.texto);
+    selectChip("Atualização");
+    closePanels();
+    els.input.focus();
+  }
+
+  // ---------- Deliberação do CBU (Relevância ⇄ Destaque) ----------
+  function setDestaque(v) {
+    destaqueCbu = !!v;
+    els.cbuToggle.checked = destaqueCbu;
+    els.cbuLabel.classList.toggle("on", destaqueCbu);
+  }
+
+  function setCbuEnabled(enabled) {
+    els.cbuToggle.disabled = !enabled;
+    els.cbuLabel.classList.toggle("disabled", !enabled);
+  }
+
+  // Mesma troca de título da Edge Function, usada só quando o anúncio não
+  // ficou salvo no histórico (banco indisponível).
+  function trocarTituloLocal(texto, destaque) {
+    var titulo = "*OCORRÊNCIA DE " + (destaque ? "DESTAQUE" : "RELEVÂNCIA") + "*";
+    var re = /^[ \t]*\*{0,2}[ \t]*OCORR[ÊE]NCIA DE (?:DESTAQUE|RELEV[ÂA]NCIA)[ \t]*\*{0,2}[^*\n]*?[ \t]*\*{0,2}[ \t]*$/m;
+    return re.test(texto) ? texto.replace(re, titulo) : titulo + "\n" + texto;
+  }
+
+  function lastAssistantTurn() {
+    for (var i = turns.length - 1; i >= 0; i--) {
+      if (turns[i].role === "assistant") return turns[i];
+    }
+    return null;
+  }
+
+  function showDeliberacao(texto, destaque) {
+    var bubble = addAssistantBubble();
+    addTagAbove(bubble, destaque ? "retificacao" : "novo",
+      destaque ? "DESTAQUE — DELIBERADO PELO CBU" : "RELEVÂNCIA — DESTAQUE DESMARCADO");
+    renderTelegramPreview(bubble, texto);
+    lastAssistantTurn().content = texto;
+  }
+
+  els.cbuToggle.addEventListener("change", async function () {
+    var want = els.cbuToggle.checked;
+    if (busy) { setDestaque(!want); return; }
+
+    var ultimo = lastAssistantTurn();
+    if (!ultimo) { setDestaque(want); return; } // ainda sem anúncio: vale para a geração
+
+    if (!currentAnuncioId) {
+      setDestaque(want);
+      showDeliberacao(trocarTituloLocal(ultimo.content, want), want);
+      return;
+    }
+
+    busy = true;
+    setCbuEnabled(false);
+    setStatus("ATUALIZANDO", true);
+    try {
+      var r = await callFunction({ action: "marcar_destaque", id: currentAnuncioId, destaque: want });
+      if (!r.ok || !r.data || !r.data.text) {
+        setDestaque(!want);
+        addErrorBubble(errorCopy((r.data && r.data.error) || "historico_indisponivel"));
+      } else {
+        setDestaque(want);
+        showDeliberacao(r.data.text, want);
+      }
+    } catch (_e) {
+      setDestaque(!want);
+      addErrorBubble(errorCopy("network_error"));
+    } finally {
+      busy = false;
+      setCbuEnabled(true);
+      setStatus("PRONTO", false);
+    }
+  });
 
   // ---------- Anexos (imagem + PDF) ----------
   // Imagem vai direto pro modelo com visão da Groq (qwen/qwen3.8-27b, até
@@ -1154,23 +1528,22 @@
     els.sendBtn.disabled = false;
     els.sendBtn.textContent = "■";
     els.sendBtn.classList.add("stop");
+    setCbuEnabled(false);
     setStatus("GERANDO", true);
 
     var bubble = addAssistantBubble();
     abortCtl = new AbortController();
 
     try {
-      var res = await fetch(EDGE_FUNCTION_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: abortCtl.signal,
-        body: JSON.stringify({ turns: turns, attachments: attachmentsPayload })
-      });
+      var r = await callFunction({
+        turns: turns,
+        attachments: attachmentsPayload,
+        anuncioId: currentAnuncioId,
+        destaqueCbu: destaqueCbu
+      }, abortCtl.signal);
+      var data = r.data;
 
-      var data = null;
-      try { data = await res.json(); } catch (_e) { /* corpo vazio ou não-JSON */ }
-
-      if (!res.ok || !data || !data.text) {
+      if (!r.ok || !data || !data.text) {
         var code = (data && data.error) || "upstream_error";
         bubble.parentElement.remove();
         addErrorBubble(errorCopy(code));
@@ -1178,6 +1551,15 @@
       } else {
         renderTelegramPreview(bubble, data.text);
         turns.push({ role: "assistant", content: data.text });
+        if (data.anuncio && data.anuncio.id) {
+          currentAnuncioId = data.anuncio.id;
+        } else {
+          var note = document.createElement("span");
+          note.className = "msgNote";
+          note.textContent = "não salvo no histórico";
+          note.title = errorCopy("historico_indisponivel");
+          bubble.nextSibling.appendChild(note);
+        }
         showPostGenToast();
       }
     } catch (e) {
@@ -1193,6 +1575,7 @@
       els.sendBtn.disabled = false;
       els.sendBtn.textContent = "➤";
       els.sendBtn.classList.remove("stop");
+      setCbuEnabled(true);
       setStatus("PRONTO", false);
       scrollToBottom();
     }
