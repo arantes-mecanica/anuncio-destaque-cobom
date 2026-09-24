@@ -1,19 +1,17 @@
 // Supabase Edge Function: gerar-anuncio
-// Recebe o histórico da conversa (turns) e chama a API do Gemini (Google)
-// para gerar o Anúncio de Ocorrência de Destaque, mantendo a chave de API
-// (GEMINI_API_KEY) só no servidor — nunca no navegador.
+// Recebe o histórico da conversa (turns) e chama a API da Groq para gerar
+// o Anúncio de Ocorrência de Destaque, mantendo a chave de API
+// (GROQ_API_KEY) só no servidor — nunca no navegador.
 //
-// ATENÇÃO — decisão institucional já tomada, registrada aqui para quem
-// mantiver este código no futuro: no nível GRATUITO da API do Gemini, o
-// Google pode usar os prompts e respostas para melhorar seus produtos
-// (ver https://ai.google.dev/gemini-api/terms). Isso só deixa de valer no
-// nível pago, com faturamento ativado. Optou-se por seguir mesmo assim
-// por restrição orçamentária — ciente do trade-off frente ao item 8.1/8.2
-// do Memorando nº 3.200 (proteção de dados de envolvidos).
+// Por que Groq em vez de Gemini/Anthropic: sem custo (nível gratuito sem
+// cartão), sem uso dos dados para treinamento em nenhum nível (gratuito ou
+// pago — diferente do Gemini, cuja proteção só vale no pago), e limite de
+// requisições bem mais folgado (compatível com o volume do COBOM).
+// Ver https://groq.com/privacy-policy
 //
 // Deploy:
 //   supabase functions deploy gerar-anuncio --project-ref SEU_PROJECT_REF
-//   supabase secrets set GEMINI_API_KEY=SUA_CHAVE --project-ref SEU_PROJECT_REF
+//   supabase secrets set GROQ_API_KEY=SUA_CHAVE --project-ref SEU_PROJECT_REF
 //
 // Teste local:
 //   supabase functions serve gerar-anuncio --env-file supabase/.env.local
@@ -83,9 +81,8 @@ Em ocorrências envolvendo militar do CBMMG, autoridade civil/militar, pessoa p�
 # FORMATO FINAL
 Responda SOMENTE com o bloco do anúncio, pronto para colar no Telegram — sem cabeçalhos, sem título de seção, sem comentário em volta (isso vale mesmo com ENQUADRAMENTO "a confirmar", que fica dentro do próprio campo). Acrescente PENDÊNCIAS DE PREENCHIMENTO só se houver campo faltante, e OBSERVAÇÃO DE PRIVACIDADE só se aplicável — nessa ordem, depois do anúncio. Nunca invente informação para completar o modelo; nunca omita um campo obrigatório; sempre reavalie o enquadramento a cada mensagem, inclusive em atualizações.`;
 
-const GEMINI_MODEL = "gemini-3.6-flash";
-const GEMINI_URL =
-  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 // Ajuste para o(s) domínio(s) reais do seu front-end assim que estiver no ar
 // (ex.: "https://seu-usuario.github.io"). "*" funciona para testar, mas é
@@ -103,20 +100,10 @@ interface Turn {
   content: string;
 }
 
-interface Attachment {
-  mimeType: string; // image/jpeg, image/png, image/webp, image/gif, application/pdf
-  data: string; // base64, sem o prefixo "data:...;base64,"
-}
-
-const ALLOWED_MIME = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "application/pdf",
-]);
-const MAX_ATTACHMENTS = 5;
-const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024; // ~15MB decodificado, por arquivo
+// NOTA: o modelo de texto da Groq usado aqui (llama-3.3-70b-versatile) não
+// lê imagem nem PDF — só texto. Anexos ainda chegam do front-end (fica pra
+// uma etapa futura trocar por um modelo com visão da Groq), então por
+// enquanto avisamos com um erro claro em vez de ignorar silenciosamente.
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -131,28 +118,16 @@ Deno.serve(async (req: Request) => {
   }
 
   let turns: Turn[];
-  let attachments: Attachment[];
+  let hasAttachments = false;
   try {
     const body = await req.json();
     turns = body.turns;
-    attachments = Array.isArray(body.attachments) ? body.attachments : [];
+    hasAttachments = Array.isArray(body.attachments) && body.attachments.length > 0;
     if (!Array.isArray(turns) || turns.length === 0) {
       throw new Error("empty");
     }
     if (turns[turns.length - 1].role !== "user") {
       throw new Error("must_end_on_user");
-    }
-    if (attachments.length > MAX_ATTACHMENTS) {
-      throw new Error("too_many_attachments");
-    }
-    for (const a of attachments) {
-      if (!a || typeof a.data !== "string" || !ALLOWED_MIME.has(a.mimeType)) {
-        throw new Error("bad_attachment");
-      }
-      // base64 length ~ 4/3 dos bytes originais
-      if (a.data.length > (MAX_ATTACHMENT_BYTES * 4) / 3) {
-        throw new Error("attachment_too_large");
-      }
     }
   } catch (_e) {
     return new Response(JSON.stringify({ error: "invalid_request" }), {
@@ -161,7 +136,14 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (hasAttachments) {
+    return new Response(JSON.stringify({ error: "attachments_unsupported" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const apiKey = Deno.env.get("GROQ_API_KEY");
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "server_misconfigured" }), {
       status: 500,
@@ -169,57 +151,44 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // Gemini usa "user"/"model" (não "assistant") e cada turno é
-  // {role, parts:[...]}. Anexos (foto/PDF) só valem para a ÚLTIMA
-  // mensagem do usuário — igual ao comportamento da versão claude.ai,
-  // que também não reenvia anexos de turnos antigos.
-  const contents = turns.map((t, i) => {
-    // deno-lint-ignore no-explicit-any
-    const parts: any[] = [{ text: t.content }];
-    const isLastUserTurn = i === turns.length - 1 && t.role === "user";
-    if (isLastUserTurn) {
-      for (const a of attachments) {
-        parts.push({ inline_data: { mime_type: a.mimeType, data: a.data } });
-      }
-    }
-    return {
-      role: t.role === "assistant" ? "model" : "user",
-      parts,
-    };
-  });
+  // Formato OpenAI-padrão: role "system" para as regras, e os turnos do
+  // usuário já vêm como "user"/"assistant" — sem precisar converter nada.
+  const messages = [
+    { role: "system", content: RULES },
+    ...turns.map((t) => ({ role: t.role, content: t.content })),
+  ];
 
   const requestBody = JSON.stringify({
-    system_instruction: { parts: [{ text: RULES }] },
-    contents,
-    generationConfig: {
-      maxOutputTokens: 4096,
-      temperature: 0.4,
-      thinkingConfig: { thinkingLevel: "low" },
-    },
+    model: GROQ_MODEL,
+    messages,
+    max_tokens: 2048,
+    temperature: 0.4,
   });
 
   try {
-    // O Gemini às vezes responde 503 "high demand" em picos de uso —
-    // é temporário do lado do Google, então tentamos de novo sozinhos
-    // (com uma pequena espera) antes de desistir e mostrar erro.
+    // Repetimos automaticamente em caso de sobrecarga temporária (503) ou
+    // limite de requisições (429), antes de desistir e mostrar erro.
     const MAX_ATTEMPTS = 3;
-    let geminiRes: Response | null = null;
+    let groqRes: Response | null = null;
     let lastErrText = "";
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+      groqRes = await fetch(GROQ_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
         body: requestBody,
       });
 
-      if (geminiRes.ok) break;
+      if (groqRes.ok) break;
 
-      lastErrText = await geminiRes.text();
-      const retryable = geminiRes.status === 503 || geminiRes.status === 429;
+      lastErrText = await groqRes.text();
+      const retryable = groqRes.status === 503 || groqRes.status === 429;
       console.error(
-        `Gemini API error (tentativa ${attempt}/${MAX_ATTEMPTS}):`,
-        geminiRes.status,
+        `Groq API error (tentativa ${attempt}/${MAX_ATTEMPTS}):`,
+        groqRes.status,
         lastErrText,
       );
 
@@ -227,8 +196,8 @@ Deno.serve(async (req: Request) => {
       await new Promise((r) => setTimeout(r, attempt * 800)); // 800ms, depois 1600ms
     }
 
-    if (!geminiRes || !geminiRes.ok) {
-      const status = geminiRes?.status;
+    if (!groqRes || !groqRes.ok) {
+      const status = groqRes?.status;
       const code = status === 503 || status === 429 ? "model_overloaded" : "upstream_error";
       return new Response(
         JSON.stringify({ error: code, status }),
@@ -236,15 +205,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const data = await geminiRes.json();
-    const candidate = (data.candidates || [])[0];
-    const text = (candidate?.content?.parts || [])
-      .map((p: { text?: string }) => p.text || "")
-      .join("");
+    const data = await groqRes.json();
+    const text = data.choices?.[0]?.message?.content || "";
 
     if (!text) {
-      // finishReason "SAFETY" ou similar cai aqui também — sem texto utilizável.
-      console.error("Resposta vazia do Gemini:", JSON.stringify(data));
+      console.error("Resposta vazia da Groq:", JSON.stringify(data));
       return new Response(JSON.stringify({ error: "empty_completion" }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
