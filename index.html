@@ -472,17 +472,41 @@
   }
 
   .assistantWrap { max-width: 88%; width: 100%; }
-  .msgTools {
-    display: flex; gap: 8px; margin-top: 6px; padding-left: 2px;
+  .msg.assistant .assistantWrap .bubble { position: relative; padding-right: 46px; max-width: none; }
+  .copyBtn {
+    position: absolute; top: 7px; right: 7px;
+    width: 30px; height: 30px; padding: 0; border-radius: 8px;
+    border: 1px solid transparent; background: transparent; color: var(--text-3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; cursor: pointer;
   }
-  .msgTools button {
+  .copyBtn:hover { background: var(--panel-2); border-color: var(--accent); color: var(--accent); }
+  .copyBtn.done { color: var(--accent); }
+  .bubble:not([data-raw]) .copyBtn { display: none; }
+
+  /* Enquadramento e pendências: apoio ao despachante, fora do Copiar. */
+  .auxPanel {
+    margin-top: 8px; padding: 9px 12px 10px;
+    border: 1px dashed var(--border); border-radius: 10px;
+    color: var(--text-2); font-size: 13px; line-height: 1.55;
+    white-space: pre-wrap; word-wrap: break-word;
+  }
+  .auxPanel .auxHead {
+    display: block; margin-bottom: 4px;
     font-family: "Barlow Condensed", sans-serif;
-    font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em;
-    color: var(--text-3);
-    background: none; border: none; cursor: pointer; padding: 2px 4px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--text-3);
   }
-  .msgTools button:hover { color: var(--accent); }
+
+  .msgTools { display: flex; gap: 8px; margin-top: 6px; padding-left: 2px; }
+  .msgTools:empty { display: none; }
   .msgTools .msgNote { font-size: 11.5px; color: var(--warn); padding: 2px 4px; }
+
+  /* Marca onde começam as atualizações feitas nesta conversa. */
+  .sessionMark { display: flex; align-items: center; gap: 10px; }
+  .sessionMark::before, .sessionMark::after {
+    content: ""; flex: 1; height: 1px; background: var(--border);
+  }
+  .sessionMark .tag { margin-bottom: 0; }
 
   .tag {
     display: inline-block;
@@ -715,7 +739,9 @@
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol>
-  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16a2 2 0 0 1-1-1.7V5a2 2 0 0 1 2-2h9.3A2 2 0 0 1 16 4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-flame"viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
 </svg>
 
 <header>
@@ -941,14 +967,56 @@
   // Renders Telegram-style *bold* markers as <b> for preview, without
   // touching the raw text kept for copying (that stays with the asterisks
   // Telegram itself needs).
+  function telegramHtml(text) {
+    return escapeHtml(text).replace(/\*([^\n*]+)\*/g, "<b>$1</b>");
+  }
+
+  // ENQUADRAMENTO (sempre o último campo) e PENDÊNCIAS DE PREENCHIMENTO são
+  // apoio ao despachante: ficam na tela, mas fora do texto copiado. O texto
+  // completo continua em `turns` para o modelo ter o contexto nas atualizações.
+  var APOIO_RE = /^[ \t]*\*{0,2}[ \t]*(?:ENQUADRAMENTO|PEND[ÊE]NCIAS DE PREENCHIMENTO)\b/im;
+  function splitApoio(text) {
+    var m = APOIO_RE.exec(text);
+    if (!m) return { anuncio: text, apoio: "" };
+    return {
+      anuncio: text.slice(0, m.index).replace(/\s+$/, ""),
+      apoio: text.slice(m.index).trim()
+    };
+  }
+
   function renderTelegramPreview(bubble, rawText) {
-    bubble.setAttribute("data-raw", rawText);
-    var html = escapeHtml(rawText).replace(/\*([^\n*]+)\*/g, "<b>$1</b>");
-    bubble.innerHTML = html;
+    var parts = splitApoio(rawText);
+    bubble.setAttribute("data-raw", parts.anuncio);
+    (bubble.querySelector(".bubbleBody") || bubble).innerHTML = telegramHtml(parts.anuncio);
+
+    var wrap = bubble.parentElement;
+    var old = wrap.querySelector(".auxPanel");
+    if (old) old.remove();
+    if (parts.apoio) {
+      var aux = document.createElement("div");
+      aux.className = "auxPanel";
+      aux.innerHTML = '<span class="auxHead">APOIO AO DESPACHANTE · NÃO VAI NO COPIAR</span>' +
+        telegramHtml(parts.apoio);
+      wrap.insertBefore(aux, bubble.nextSibling);
+    }
+  }
+
+  // Depois de abrir um anúncio do histórico, a primeira ação da conversa
+  // (envio ou deliberação do CBU) ganha um divisor marcando onde começam
+  // as atualizações feitas agora.
+  var marcarInicioConversa = false;
+  function marcarInicio() {
+    if (!marcarInicioConversa) return;
+    marcarInicioConversa = false;
+    var mark = document.createElement("div");
+    mark.className = "sessionMark";
+    mark.innerHTML = '<span class="tag novo">ATUALIZAÇÕES DESTA CONVERSA</span>';
+    els.feed.appendChild(mark);
   }
 
   function addUserBubble(text) {
     els.empty.style.display = "none";
+    marcarInicio();
     var row = document.createElement("div");
     row.className = "msg user";
     var bubble = document.createElement("div");
@@ -966,21 +1034,36 @@
     wrap.className = "assistantWrap";
     var bubble = document.createElement("div");
     bubble.className = "bubble";
-    bubble.innerHTML = '<span class="think">Pensando…</span>';
+
+    var copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "copyBtn";
+    copyBtn.title = "Copiar anúncio";
+    copyBtn.setAttribute("aria-label", "Copiar anúncio");
+    copyBtn.innerHTML = icon("copy");
+    copyBtn.onclick = function () {
+      var text = bubble.getAttribute("data-raw") || "";
+      navigator.clipboard.writeText(text).then(function () {
+        copyBtn.innerHTML = icon("check");
+        copyBtn.classList.add("done");
+        copyBtn.title = "Copiado";
+        setTimeout(function () {
+          copyBtn.innerHTML = icon("copy");
+          copyBtn.classList.remove("done");
+          copyBtn.title = "Copiar anúncio";
+        }, 1500);
+      });
+    };
+    bubble.appendChild(copyBtn);
+
+    var body = document.createElement("div");
+    body.className = "bubbleBody";
+    body.innerHTML = '<span class="think">Pensando…</span>';
+    bubble.appendChild(body);
     wrap.appendChild(bubble);
 
     var tools = document.createElement("div");
     tools.className = "msgTools";
-    var copyBtn = document.createElement("button");
-    copyBtn.textContent = "COPIAR";
-    copyBtn.onclick = function () {
-      var text = bubble.getAttribute("data-raw") || bubble.textContent;
-      navigator.clipboard.writeText(text).then(function () {
-        copyBtn.textContent = "COPIADO";
-        setTimeout(function () { copyBtn.textContent = "COPIAR"; }, 1500);
-      });
-    };
-    tools.appendChild(copyBtn);
     wrap.appendChild(tools);
 
     row.appendChild(wrap);
@@ -1149,6 +1232,7 @@
     els.empty.style.display = "";
     clearAttachments();
     hidePostGenToast();
+    marcarInicioConversa = false;
     currentAnuncioId = null;
     setDestaque(false);
     selectChip("Novo anúncio");
@@ -1337,6 +1421,7 @@
     var bubble = addAssistantBubble();
     addTagAbove(bubble, "novo", "DO HISTÓRICO");
     renderTelegramPreview(bubble, a.texto);
+    marcarInicioConversa = true;
     selectChip("Atualização");
     closePanels();
     els.input.focus();
@@ -1370,6 +1455,7 @@
   }
 
   function showDeliberacao(texto, destaque) {
+    marcarInicio();
     var bubble = addAssistantBubble();
     addTagAbove(bubble, destaque ? "retificacao" : "novo",
       destaque ? "DESTAQUE — DELIBERADO PELO CBU" : "RELEVÂNCIA — DESTAQUE DESMARCADO");
@@ -1827,7 +1913,7 @@
 
       if (!r.ok || !data || !data.text) {
         var code = (data && data.error) || "upstream_error";
-        bubble.parentElement.remove();
+        bubble.closest(".msg").remove();
         addErrorBubble(errorCopy(code));
         turns.pop(); // remove o turno do usuário que não teve resposta
       } else {
@@ -1840,12 +1926,12 @@
           note.className = "msgNote";
           note.textContent = "não salvo no histórico";
           note.title = errorCopy("historico_indisponivel");
-          bubble.nextSibling.appendChild(note);
+          bubble.parentElement.querySelector(".msgTools").appendChild(note);
         }
         showPostGenToast();
       }
     } catch (e) {
-      bubble.parentElement.remove();
+      bubble.closest(".msg").remove();
       turns.pop();
       if (e && e.name === "AbortError") {
         addErrorBubble("Envio cancelado.");
