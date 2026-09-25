@@ -160,6 +160,8 @@
   .status.saved .dot { animation: none; }
   .status.unsaved { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
   .status.unsaved .dot { background: var(--warn); animation: none; }
+  /* Fato com mais de 48h: gerado normalmente, mas não entra no histórico. */
+  .status.outside .dot { background: var(--text-2); animation: none; }
   /* Deliberação do CBU marcada, esperando o Enviar. */
   .status.pending { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
   .status.pending .dot { background: var(--warn); animation: pulseWarn 1.4s infinite; }
@@ -550,6 +552,7 @@
   .msgTools { display: flex; gap: 8px; margin-top: 6px; padding-left: 2px; }
   .msgTools:empty { display: none; }
   .msgTools .msgNote { font-size: 11.5px; color: var(--warn); padding: 2px 4px; }
+  .msgTools .msgNote.outside { color: var(--text-2); }
 
   /* Marca onde começam as atualizações feitas nesta conversa. */
   .sessionMark { display: flex; align-items: center; gap: 10px; }
@@ -1019,19 +1022,22 @@
   var currentAnuncioId = null; // registro no histórico (tabela anuncios) desta conversa
   var destaqueCbu = false;     // o CBU deliberou destaque para esta ocorrência?
   // Último anúncio gerado nesta conversa ficou no histórico? null = nada
-  // gerado ainda (feed vazio ou só o anúncio aberto do histórico).
+  // gerado ainda (feed vazio ou só o anúncio aberto do histórico); "fora" =
+  // fato com mais de 48h, que não entra no histórico.
   var salvo = null;
   // Título (Destaque?) do último anúncio desta conversa. O switch do CBU só
   // registra a intenção; ela vale no próximo Enviar.
   var destaqueSalvo = false;
 
-  // kind: "busy" | "saved" | "unsaved" | vazio (pronto)
+  // kind: "busy" | "saved" | "unsaved" | "pending" | "outside" | vazio (pronto)
   function setStatus(text, kind) {
-    ["busy", "saved", "unsaved", "pending"].forEach(function (c) {
+    ["busy", "saved", "unsaved", "pending", "outside"].forEach(function (c) {
       els.statusPill.classList.toggle(c, kind === c);
     });
     els.statusPill.title = kind === "pending"
       ? "Envie para aplicar a deliberação do CBU. Você pode incluir mais informações no campo antes de enviar."
+      : kind === "outside"
+      ? "O fato tem mais de 48h: o anúncio foi gerado, mas não entra no histórico."
       : "";
     if (els.statusText.textContent === text) return;
     els.statusText.textContent = text;
@@ -1046,10 +1052,16 @@
     statusRepouso();
   }
 
+  function foraDoPrazo(anuncio) {
+    var t = Date.parse(anuncio.expira_em);
+    return !isNaN(t) && t <= Date.now();
+  }
+
   function statusRepouso() {
     if (destaquePendente()) setStatus("AGUARDANDO ENVIO", "pending");
     else if (salvo === true) setStatus("SALVO", "saved");
     else if (salvo === false) setStatus("NÃO SALVO", "unsaved");
+    else if (salvo === "fora") setStatus("FORA DAS 48H", "outside");
     else setStatus("PRONTO");
   }
 
@@ -1701,7 +1713,7 @@
     if (!currentAnuncioId) {
       destaqueSalvo = want;
       showDeliberacao(trocarTituloLocal(ultimo.content, want), want);
-      setSalvo(false);
+      setSalvo(salvo === "fora" ? "fora" : false);
       return;
     }
 
@@ -2190,7 +2202,16 @@
         turns.push({ role: "assistant", content: data.text });
         if (deliberou) addTagAbove(bubble, destaqueCbu ? "retificacao" : "novo", rotuloDeliberacao(destaqueCbu));
         destaqueSalvo = destaqueCbu;
-        if (data.anuncio && data.anuncio.id) {
+        if (data.anuncio && data.anuncio.id && foraDoPrazo(data.anuncio)) {
+          // A função grava, mas o registro já nasce expirado (fato com mais
+          // de 48h): não aparece no histórico e é purgado no próximo acesso.
+          currentAnuncioId = null;
+          salvo = "fora";
+          var nota = document.createElement("span");
+          nota.className = "msgNote outside";
+          nota.textContent = "fora do histórico (fato com mais de 48h)";
+          bubble.parentElement.querySelector(".msgTools").appendChild(nota);
+        } else if (data.anuncio && data.anuncio.id) {
           currentAnuncioId = data.anuncio.id;
           salvo = true;
         } else {
