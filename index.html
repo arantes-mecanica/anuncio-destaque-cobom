@@ -103,15 +103,16 @@
     justify-content: space-between;
     gap: 16px;
   }
-  .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-  .brand .mark {
-    font-family: "Barlow Condensed", sans-serif;
-    font-weight: 700;
-    font-size: 13px;
-    letter-spacing: 0.14em;
-    color: var(--accent);
-    white-space: nowrap;
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand .mark { width: 44px; height: 44px; flex: 0 0 auto; display: block; }
+
+  /* Ícones SVG (sprite no início do <body>): herdam cor e tamanho do texto. */
+  .ic {
+    width: 1em; height: 1em; flex: 0 0 auto; display: block;
+    fill: none; stroke: currentColor; stroke-width: 2;
+    stroke-linecap: round; stroke-linejoin: round;
   }
+  .ic.solid { fill: currentColor; stroke: none; }
   .brand .title {
     font-family: "Barlow Condensed", sans-serif;
     font-weight: 600;
@@ -156,51 +157,62 @@
     100% { box-shadow: 0 0 0 0 rgba(73,195,138,0); }
   }
 
-  .composerStatusBar {
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
+  /* Switch "CBU deliberou destaque" (na linha dos chips) */
   .cbuToggle {
     display: flex; align-items: center; gap: 8px;
-    height: 44px;
-    padding: 0 16px;
-    border: 1.5px solid var(--border);
-    border-radius: 22px;
-    background: var(--panel-2);
+    height: 28px;
+    padding: 0 4px 0 2px;
     color: var(--text-2);
     cursor: pointer;
     font-family: "Barlow Condensed", sans-serif;
-    font-weight: 700; font-size: 15px; letter-spacing: 0.02em;
-    user-select: none;
+    font-weight: 700; font-size: 13.5px; letter-spacing: 0.03em;
+    user-select: none; white-space: nowrap;
   }
-  .cbuToggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer; }
-  .cbuToggle.on { border-color: var(--accent); color: var(--accent); background: transparent; }
+  .cbuToggle input {
+    -webkit-appearance: none; appearance: none;
+    position: relative; flex: 0 0 auto;
+    width: 34px; height: 20px; margin: 0;
+    border-radius: 10px;
+    background: var(--border);
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .cbuToggle input::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    transition: transform 0.15s ease;
+  }
+  .cbuToggle input:checked { background: var(--accent); }
+  .cbuToggle input:checked::after { transform: translateX(14px); }
+  .cbuToggle input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .cbuToggle.on { color: var(--accent); }
   .cbuToggle.disabled { opacity: 0.5; cursor: default; }
   .cbuToggle.disabled input { cursor: default; }
-  .statusBig {
-    font-size: 15px;
-    padding: 10px 16px;
-    border-width: 1.5px;
+
+  /* Faixa inferior do main: Nova ocorrência (esq.) + status (dir.), fora da rolagem */
+  .mainDock {
+    flex: 0 0 auto;
+    width: 100%; max-width: 792px; margin: 0 auto;
+    padding: 6px 16px 8px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
   }
-  .statusBig .dot { width: 10px; height: 10px; }
-  .bigResetBtn {
-    display: flex; align-items: center; gap: 8px;
-    border: 1.5px solid var(--accent);
-    background: var(--panel);
+  .dockReset {
+    display: flex; align-items: center; gap: 6px;
+    border: 1px solid var(--accent);
+    background: transparent;
     color: var(--accent);
-    height: 44px;
-    padding: 0 20px;
-    border-radius: 22px;
+    height: 30px;
+    padding: 0 13px;
+    border-radius: 16px;
     cursor: pointer;
     font-family: "Barlow Condensed", sans-serif;
-    font-weight: 700;
-    font-size: 16px;
-    letter-spacing: 0.02em;
+    font-weight: 700; font-size: 13.5px; letter-spacing: 0.03em;
   }
-  .bigResetBtn:hover { background: var(--accent); color: var(--accent-ink); }
-  .bigResetBtn .hbIcon { font-size: 21px; line-height: 1; }
+  .dockReset[hidden] { display: none; }
+  .dockReset:hover { background: var(--accent); color: var(--accent-ink); }
+  .dockReset .ic { font-size: 15px; }
+  .mainDock .status { margin-left: auto; }
 
   .headerBtn {
     display: flex; align-items: center; gap: 6px;
@@ -215,7 +227,7 @@
     font-family: "Barlow Condensed", sans-serif;
   }
   .headerBtn:hover { border-color: var(--accent); color: var(--accent); background: var(--panel); }
-  .headerBtn .hbIcon { font-size: 16px; line-height: 1; }
+  .headerBtn .ic { font-size: 16px; }
   .headerBtn .hbLabel {
     font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em;
     white-space: nowrap;
@@ -223,6 +235,7 @@
   @media (max-width: 620px) {
     .headerBtn { padding: 0; width: 36px; justify-content: center; }
     .headerBtn .hbLabel { display: none; }
+    .brand .mark { width: 36px; height: 36px; }
   }
 
   /* ---------- Criteria drawer ---------- */
@@ -278,7 +291,8 @@
   .hmHead .sub { font-size: 12px; color: var(--text-3); }
   .hmClose {
     border: 1px solid var(--border); background: var(--panel-2); color: var(--text-2);
-    width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 14px; flex: 0 0 auto;
+    width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 15px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center; padding: 0;
   }
   .hmClose:hover { border-color: var(--accent); color: var(--accent); }
   .hmBody { overflow-y: auto; }
@@ -392,13 +406,19 @@
   /* ---------- Conversation ---------- */
   main {
     flex: 1 1 auto;
+    min-height: 0;
+    display: flex; flex-direction: column;
+  }
+  #scroller {
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     padding: 22px 16px 12px;
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar) transparent;
   }
-  main::-webkit-scrollbar { width: 8px; }
-  main::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 8px; }
+  #scroller::-webkit-scrollbar { width: 8px; }
+  #scroller::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 8px; }
 
   .feed { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 
@@ -406,7 +426,7 @@
     max-width: 660px; margin: 7vh auto; text-align: center;
     color: var(--text-2);
   }
-  .empty .glyph { font-size: 34px; margin-bottom: 10px; }
+  .empty .glyph { font-size: 40px; margin-bottom: 10px; color: var(--accent); display: flex; justify-content: center; }
   .empty h1 {
     font-family: "Barlow Condensed", sans-serif;
     font-size: 36px; font-weight: 700; color: var(--text); margin: 0 0 12px;
@@ -516,7 +536,12 @@
   }
   .postGenToast b { font-weight: 700; }
 
-  .chips { display: flex; gap: 7px; margin-bottom: 9px; flex-wrap: wrap; }
+  .composerRow {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px 12px; flex-wrap: wrap;
+    margin-bottom: 9px;
+  }
+  .chips { display: flex; gap: 7px; flex-wrap: wrap; }
   .chip {
     font-family: "Barlow Condensed", sans-serif;
     font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
@@ -529,13 +554,26 @@
   .chip.active { border-color: var(--accent); color: var(--accent); background: transparent; }
 
   .composer {
+    position: relative;
     display: flex; align-items: flex-end; gap: 8px;
     border: 1px solid var(--border);
     background: var(--panel-2);
     border-radius: 14px;
-    padding: 8px 8px 8px 8px;
+    padding: 12px 8px 8px 8px;
   }
   .composer:focus-within { border-color: var(--accent); }
+  /* Alça para redimensionar o campo de texto: arrastar pra cima aumenta. */
+  .composerGrip {
+    position: absolute; top: 0; left: 50%;
+    width: 64px; height: 12px; margin-left: -32px;
+    cursor: ns-resize; touch-action: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .composerGrip::before {
+    content: ""; width: 36px; height: 4px; border-radius: 2px;
+    background: var(--border);
+  }
+  .composerGrip:hover::before, .composerGrip.dragging::before { background: var(--accent); }
 
   .composerIconBtn {
     flex: 0 0 auto;
@@ -544,7 +582,8 @@
     color: var(--text-2);
     border-radius: 12px;
     cursor: pointer;
-    font-size: 21px;
+    font-size: 22px;
+    padding: 0;
     display: flex; align-items: center; justify-content: center;
   }
   .composerIconBtn:hover { background: var(--panel); border-color: var(--accent); color: var(--accent); }
@@ -583,7 +622,7 @@
     width: 26px; height: 26px; border-radius: 5px;
     background: var(--panel); border: 1px solid var(--border);
     display: flex; align-items: center; justify-content: center;
-    font-size: 13px; flex: 0 0 auto;
+    font-size: 15px; flex: 0 0 auto; color: var(--text-2);
   }
   .attachChip .attachName {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -591,6 +630,7 @@
   .attachChip button {
     flex: 0 0 auto; border: none; background: none; color: var(--text-3);
     cursor: pointer; font-size: 13px; padding: 0 2px;
+    display: flex; align-items: center;
   }
   .attachChip button:hover { color: var(--accent); }
   .attachChip.processing .attachName { color: var(--text-3); font-style: italic; }
@@ -604,8 +644,7 @@
     font-family: "Barlow", sans-serif;
     font-size: 14.5px;
     line-height: 1.5;
-    max-height: 160px;
-    min-height: 22px;
+    min-height: 66px;
     padding: 6px 0;
     outline: none;
   }
@@ -620,10 +659,34 @@
     border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
-    font-size: 19px;
+    font-size: 21px;
+    padding: 0;
   }
   #sendBtn:disabled { opacity: 0.4; cursor: default; }
   #sendBtn.stop { background: var(--warn); }
+
+  /* Overlay de arrastar e soltar arquivos */
+  #dropZone {
+    position: fixed; inset: 0; z-index: 50;
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+  }
+  #dropZone.open { display: flex; }
+  #dropZone .dzCard {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    width: min(460px, 100%);
+    padding: 36px 20px;
+    border: 2.5px dashed var(--accent);
+    border-radius: 18px;
+    background: var(--panel);
+    color: var(--text);
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 22px; font-weight: 700; text-align: center;
+  }
+  #dropZone .dzCard .ic { font-size: 40px; color: var(--accent); }
+  #dropZone .dzCard small { font-family: "Barlow", sans-serif; font-size: 13px; font-weight: 400; color: var(--text-2); }
 
   .foot-note {
     text-align: center; font-size: 11px; color: var(--text-3);
@@ -639,9 +702,25 @@
 </head>
 <body>
 
+<!-- Ícones (sprite): <svg class="ic"><use href="#i-…"/></svg> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+  <symbol id="i-criteria" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+  <symbol id="i-new" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a2.12 2.12 0 1 1 3 3L12 15l-4 1 1-4Z"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="8.5" y="2" width="7" height="12.5" rx="3.5" fill="currentColor" stroke="none"/><path d="M5 11.5a7 7 0 0 0 14 0M12 18.5V22"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M3.4 20.4 21 12 3.4 3.6v6.5L15 12 3.4 13.9z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+</svg>
+
 <header>
   <div class="brand">
-    <span class="mark">CBMMG · COBOM</span>
+    <img class="mark" src="assets/logo_cobom-128.png" alt="COBOM — Centro de Operações do Corpo de Bombeiros" width="44" height="44">
     <div>
       <span class="title">Anúncio de Ocorrência</span>
       <span class="ref">Memorando nº 3.200 — 17/08/2026 (SEI 1400.01.0050313/2026-06)</span>
@@ -649,16 +728,16 @@
   </div>
   <div class="headerRight">
     <button class="headerBtn" id="historyBtn" title="Anúncios das últimas 48h, para atualizar ou retificar">
-      <span class="hbIcon">🕘</span><span class="hbLabel">Histórico</span>
+      <svg class="ic"><use href="#i-history"/></svg><span class="hbLabel">Histórico</span>
     </button>
     <button class="headerBtn" id="criteriaBtn" title="Ver critérios do Memorando 3.200">
-      <span class="hbIcon">§</span><span class="hbLabel">Critérios</span>
+      <svg class="ic"><use href="#i-criteria"/></svg><span class="hbLabel">Critérios</span>
     </button>
     <button class="headerBtn" id="creditsBtn" title="Sobre o sistema">
-      <span class="hbIcon">♥</span><span class="hbLabel">Sobre</span>
+      <svg class="ic"><use href="#i-heart"/></svg><span class="hbLabel">Sobre</span>
     </button>
     <button class="headerBtn" id="resetBtn" title="Nova ocorrência">
-      <span class="hbIcon">↺</span><span class="hbLabel">Novo</span>
+      <svg class="ic"><use href="#i-new"/></svg><span class="hbLabel">Novo</span>
     </button>
   </div>
 </header>
@@ -676,7 +755,7 @@
       <h2 id="historyTitle">Histórico de anúncios</h2>
       <div class="sub">Ficam disponíveis por 48h a partir da data do fato. Abra um anúncio para atualizar, retificar ou registrar a deliberação do CBU.</div>
     </div>
-    <button class="hmClose" id="historyClose" type="button" title="Fechar">✕</button>
+    <button class="hmClose" id="historyClose" type="button" title="Fechar"><svg class="ic"><use href="#i-x"/></svg></button>
   </div>
   <div class="hmBody" id="historyBody"></div>
 </section>
@@ -702,41 +781,54 @@
 </aside>
 
 <main id="main">
+ <div id="scroller">
   <div class="feed" id="feed">
     <div class="empty" id="emptyState">
-      <div class="glyph">🚒</div>
+      <div class="glyph"><svg class="ic"><use href="#i-flame"/></svg></div>
       <h1>Descreva a ocorrência</h1>
       <p>Cole ou digite as informações que a guarnição repassou — local, vítimas, viaturas, situação. A ferramenta identifica o enquadramento no Memorando nº 3.200 e monta o anúncio no modelo padrão.</p>
       <p>O anúncio sai como <b>Relevância</b>. Depois que o CBU deliberar, marque <b>CBU deliberou destaque</b> para trocar o título. Para atualizar ou retificar um anúncio das últimas 48h, abra-o pelo <b>Histórico</b>.</p>
       <div class="hint">Ferramenta de apoio — revise sempre antes de enviar pelo canal oficial do COBOM.</div>
     </div>
   </div>
+ </div>
+  <div class="mainDock">
+    <button class="dockReset" id="resetBtnBig" type="button" hidden>
+      <svg class="ic"><use href="#i-new"/></svg> Nova ocorrência
+    </button>
+    <div class="status" id="statusPill"><span class="dot"></span><span id="statusText">PRONTO</span></div>
+  </div>
 </main>
+
+<div id="dropZone" aria-hidden="true">
+  <div class="dzCard">
+    <svg class="ic"><use href="#i-clip"/></svg>
+    Solte para anexar
+    <small>Foto (JPEG, PNG, WebP, GIF) ou PDF</small>
+  </div>
+</div>
 
 <footer>
   <div class="composerWrap">
-    <div class="composerStatusBar">
-      <button class="bigResetBtn" id="resetBtnBig" type="button">
-        <span class="hbIcon">↺</span> Nova ocorrência
-      </button>
+    <div class="postGenToast" id="postGenToast">Anúncio pronto. Pra outra ocorrência, clique em <b>Nova ocorrência</b> primeiro.</div>
+    <div class="composerRow">
+      <div class="chips">
+        <button class="chip active" data-tipo="Novo anúncio">Novo anúncio</button>
+        <button class="chip" data-tipo="Atualização">Atualização</button>
+        <button class="chip" data-tipo="Retificação">Retificação</button>
+      </div>
       <label class="cbuToggle" id="cbuLabel" title="Marque depois que o CBU deliberar que a ocorrência é Destaque: o título do anúncio muda para OCORRÊNCIA DE DESTAQUE.">
-        <input type="checkbox" id="cbuToggle"> CBU deliberou destaque
+        <input type="checkbox" id="cbuToggle" role="switch"> CBU deliberou destaque
       </label>
-      <div class="status statusBig" id="statusPill"><span class="dot"></span><span id="statusText">PRONTO</span></div>
-    </div>
-    <div class="postGenToast" id="postGenToast">Anúncio pronto. Pra outra ocorrência, clique em <b>↺ Novo</b> primeiro.</div>
-    <div class="chips">
-      <button class="chip active" data-tipo="Novo anúncio">Novo anúncio</button>
-      <button class="chip" data-tipo="Atualização">Atualização</button>
-      <button class="chip" data-tipo="Retificação">Retificação</button>
     </div>
     <div class="attachStrip" id="attachStrip"></div>
     <div class="composer">
-      <button id="attachBtn" class="composerIconBtn" title="Anexar foto ou PDF" type="button">📎</button>
-      <button id="micBtn" class="composerIconBtn" title="Ditar por voz" type="button">🎤</button>
+      <div class="composerGrip" id="composerGrip" title="Arraste para redimensionar (duplo clique volta ao padrão)"></div>
+      <button id="attachBtn" class="composerIconBtn" title="Anexar foto ou PDF (também dá pra colar um print ou arrastar o arquivo)" type="button"><svg class="ic"><use href="#i-clip"/></svg></button>
+      <button id="micBtn" class="composerIconBtn" title="Ditar por voz" type="button"><svg class="ic"><use href="#i-mic"/></svg></button>
       <input type="file" id="fileInput" accept="image/*,application/pdf" multiple hidden>
-      <textarea id="input" rows="1" placeholder="Ex.: Incêndio em galpão na Av. Amazonas, BH. Vítima com queimaduras conduzida ao PS. 3 viaturas, 9 militares. Ainda em atendimento."></textarea>
-      <button id="sendBtn" title="Enviar">➤</button>
+      <textarea id="input" rows="3" placeholder="Ex.: Incêndio em galpão na Av. Amazonas, BH. Vítima com queimaduras conduzida ao PS. 3 viaturas, 9 militares. Ainda em atendimento."></textarea>
+      <button id="sendBtn" title="Enviar"><svg class="ic"><use href="#i-send"/></svg></button>
     </div>
     <div class="foot-note">O texto gerado é um rascunho — confira dados, enquadramento e pendências antes de anunciar oficialmente.</div>
   </div>
@@ -772,7 +864,9 @@
 
   var els = {
     feed: document.getElementById("feed"),
-    main: document.getElementById("main"),
+    scroller: document.getElementById("scroller"),
+    composerGrip: document.getElementById("composerGrip"),
+    dropZone: document.getElementById("dropZone"),
     empty: document.getElementById("emptyState"),
     input: document.getElementById("input"),
     sendBtn: document.getElementById("sendBtn"),
@@ -825,9 +919,20 @@
 
   function scrollToBottom() {
     requestAnimationFrame(function () {
-      els.main.scrollTop = els.main.scrollHeight;
+      els.scroller.scrollTop = els.scroller.scrollHeight;
     });
   }
+
+  // SVG do sprite (ver <symbol id="i-…"> no início do <body>).
+  function icon(id) {
+    return '<svg class="ic"><use href="#i-' + id + '"/></svg>';
+  }
+
+  // "Nova ocorrência" (faixa inferior do main) só aparece com algo no feed.
+  function updateDockReset() {
+    els.resetBtnBig.hidden = !els.feed.querySelector(".msg");
+  }
+  new MutationObserver(updateDockReset).observe(els.feed, { childList: true });
 
   function escapeHtml(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -910,11 +1015,56 @@
     }
   }
 
+  // Altura do campo: cresce com o texto a partir de um mínimo (padrão ou o que
+  // o operador escolheu arrastando a alça), até metade da janela. O footer não
+  // tem altura fixa, então o feed encolhe/cresce junto.
+  var INPUT_MIN_H = 66;
+  var userMinH = null;
+  try { userMinH = parseInt(localStorage.getItem("cobom.inputH"), 10) || null; } catch (_e) { /* sem storage */ }
+
+  function inputMaxH() { return Math.round(window.innerHeight * 0.5); }
+
   function autoResize() {
+    var min = Math.min(userMinH || INPUT_MIN_H, inputMaxH());
     els.input.style.height = "auto";
-    els.input.style.height = Math.min(els.input.scrollHeight, 160) + "px";
+    els.input.style.height = Math.min(Math.max(els.input.scrollHeight, min), inputMaxH()) + "px";
   }
   els.input.addEventListener("input", autoResize);
+  window.addEventListener("resize", autoResize);
+
+  (function setupGrip() {
+    var startY = 0, startH = 0;
+    function onMove(e) {
+      var h = Math.round(startH + (startY - e.clientY)); // pra cima = maior
+      userMinH = Math.max(INPUT_MIN_H, Math.min(h, inputMaxH()));
+      autoResize();
+    }
+    function onUp(e) {
+      els.composerGrip.classList.remove("dragging");
+      els.composerGrip.removeEventListener("pointermove", onMove);
+      els.composerGrip.removeEventListener("pointerup", onUp);
+      els.composerGrip.removeEventListener("pointercancel", onUp);
+      try { els.composerGrip.releasePointerCapture(e.pointerId); } catch (_e) {}
+      try { localStorage.setItem("cobom.inputH", String(userMinH)); } catch (_e) {}
+      scrollToBottom();
+    }
+    els.composerGrip.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      startY = e.clientY;
+      startH = els.input.getBoundingClientRect().height;
+      els.composerGrip.classList.add("dragging");
+      try { els.composerGrip.setPointerCapture(e.pointerId); } catch (_e) {}
+      els.composerGrip.addEventListener("pointermove", onMove);
+      els.composerGrip.addEventListener("pointerup", onUp);
+      els.composerGrip.addEventListener("pointercancel", onUp);
+    });
+    els.composerGrip.addEventListener("dblclick", function () {
+      userMinH = null;
+      try { localStorage.removeItem("cobom.inputH"); } catch (_e) {}
+      autoResize();
+    });
+  })();
+  autoResize();
   els.input.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -1309,10 +1459,10 @@
         img.src = a.previewUrl;
         chip.appendChild(img);
       } else {
-        var icon = document.createElement("span");
-        icon.className = "attachIcon";
-        icon.textContent = a.kind === "pdf-text" ? "📄" : "🖼️";
-        chip.appendChild(icon);
+        var ico = document.createElement("span");
+        ico.className = "attachIcon";
+        ico.innerHTML = icon(a.kind === "pdf-text" ? "file" : "image");
+        chip.appendChild(ico);
       }
       var name = document.createElement("span");
       name.className = "attachName";
@@ -1320,7 +1470,7 @@
       chip.appendChild(name);
       var rm = document.createElement("button");
       rm.type = "button";
-      rm.textContent = "✕";
+      rm.innerHTML = icon("x");
       rm.title = "Remover";
       rm.onclick = function () { removeAttachment(a.id); };
       chip.appendChild(rm);
@@ -1369,9 +1519,69 @@
   els.fileInput.addEventListener("change", async function () {
     var files = Array.prototype.slice.call(els.fileInput.files || []);
     els.fileInput.value = "";
+    await handleFiles(files);
+  });
+
+  async function handleFiles(files) {
     for (var i = 0; i < files.length; i++) {
       await handleFile(files[i]);
     }
+  }
+
+  // ---------- Colar da área de transferência (ex.: print com Win+Shift+S) ----------
+  // Só intercepta quando não há texto: Word/Excel mandam uma imagem junto do
+  // texto copiado, e aí o certo é colar o texto normalmente.
+  document.addEventListener("paste", function (e) {
+    if (confirmCb) return;
+    var cd = e.clipboardData;
+    if (!cd) return;
+    if ((cd.getData("text/plain") || "").trim()) return;
+    var files = [];
+    Array.prototype.forEach.call(cd.items || [], function (it) {
+      if (it.kind !== "file") return;
+      var f = it.getAsFile();
+      if (!f) return;
+      if (/^image\//.test(f.type) && (!f.name || f.name === "image.png")) {
+        var d = new Date();
+        var nome = "print-" + String(d.getHours()).padStart(2, "0") + "h" +
+          String(d.getMinutes()).padStart(2, "0") + (files.length ? "-" + (files.length + 1) : "") +
+          "." + (f.type.split("/")[1] || "png");
+        f = new File([f], nome, { type: f.type });
+      }
+      files.push(f);
+    });
+    if (!files.length) return;
+    e.preventDefault();
+    handleFiles(files);
+  });
+
+  // ---------- Arrastar e soltar ----------
+  var dragDepth = 0;
+  function dragHasFiles(e) {
+    return !!(e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") !== -1);
+  }
+  window.addEventListener("dragenter", function (e) {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();
+    dragDepth++;
+    els.dropZone.classList.add("open");
+  });
+  window.addEventListener("dragover", function (e) {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault(); // sem isso o navegador abre o arquivo e sai da página
+    e.dataTransfer.dropEffect = "copy";
+  });
+  window.addEventListener("dragleave", function (e) {
+    if (!dragHasFiles(e)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) els.dropZone.classList.remove("open");
+  });
+  window.addEventListener("drop", function (e) {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    els.dropZone.classList.remove("open");
+    handleFiles(Array.prototype.slice.call(e.dataTransfer.files || []));
   });
 
   async function handleFile(file) {
@@ -1573,7 +1783,7 @@
     }
 
     var bubbleLabel = (currentTipo !== "Novo anúncio" ? "[" + currentTipo + "] " : "") +
-      (attachmentCount ? "[📎 " + attachmentCount + " anexo(s)] " : "") +
+      (attachmentCount ? "[" + attachmentCount + " anexo(s)] " : "") +
       (raw || "(sem descrição em texto — ver anexo)");
 
     var messageForModel = raw || "(sem descrição em texto — considerar apenas o(s) anexo(s) enviado(s))";
@@ -1597,7 +1807,8 @@
 
     busy = true;
     els.sendBtn.disabled = false;
-    els.sendBtn.textContent = "■";
+    els.sendBtn.innerHTML = icon("stop");
+    els.sendBtn.title = "Parar";
     els.sendBtn.classList.add("stop");
     setCbuEnabled(false);
     setStatus("GERANDO", true);
@@ -1644,7 +1855,8 @@
     } finally {
       busy = false;
       els.sendBtn.disabled = false;
-      els.sendBtn.textContent = "➤";
+      els.sendBtn.innerHTML = icon("send");
+      els.sendBtn.title = "Enviar";
       els.sendBtn.classList.remove("stop");
       setCbuEnabled(true);
       setStatus("PRONTO", false);
