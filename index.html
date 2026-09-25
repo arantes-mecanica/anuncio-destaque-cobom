@@ -143,14 +143,30 @@
     border: 1px solid var(--border);
     border-radius: 20px;
     white-space: nowrap;
+    background: transparent;
+    transition: color 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
   }
   .status .dot {
     width: 7px; height: 7px; border-radius: 50%;
     background: var(--ok);
     box-shadow: 0 0 0 0 rgba(73,195,138,0.6);
     animation: pulse 2.2s infinite;
+    transition: background-color 0.3s ease, transform 0.3s ease;
   }
-  .status.busy .dot { background: var(--warn); animation: pulse 0.9s infinite; }
+  .status.busy { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+  .status.busy .dot { background: var(--warn); animation: pulseWarn 0.9s infinite; transform: scale(1.15); }
+  /* Troca de texto: o novo estado entra deslizando de baixo. */
+  .status .statusText { display: inline-block; }
+  .status .statusText.swap { animation: statusIn 0.28s ease; }
+  @keyframes statusIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulseWarn {
+    0% { box-shadow: 0 0 0 0 rgba(232,163,61,0.55); }
+    70% { box-shadow: 0 0 0 6px rgba(232,163,61,0); }
+    100% { box-shadow: 0 0 0 0 rgba(232,163,61,0); }
+  }
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(73,195,138,0.5); }
     70% { box-shadow: 0 0 0 6px rgba(73,195,138,0); }
@@ -468,7 +484,16 @@
   .msg.assistant .bubble .think {
     font-family: "Barlow", sans-serif;
     font-style: italic;
-    color: var(--text-3);
+    font-weight: 600;
+    color: var(--warn);
+  }
+  .think .dots i { font-style: inherit; animation: dotBlink 1.2s infinite; opacity: 0.15; }
+  .think .dots i:nth-child(2) { animation-delay: 0.2s; }
+  .think .dots i:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotBlink {
+    0%, 20% { opacity: 0.15; }
+    40%, 60% { opacity: 1; }
+    100% { opacity: 0.15; }
   }
 
   .assistantWrap { max-width: 88%; width: 100%; }
@@ -486,7 +511,8 @@
 
   /* Enquadramento e pendências: apoio ao despachante, fora do Copiar. */
   .auxPanel {
-    margin-top: 8px; padding: 9px 12px 10px;
+    position: relative;
+    margin-top: 8px; padding: 9px 46px 10px 12px;
     border: 1px dashed var(--border); border-radius: 10px;
     color: var(--text-2); font-size: 13px; line-height: 1.55;
     white-space: pre-wrap; word-wrap: break-word;
@@ -494,7 +520,12 @@
   .auxPanel .auxHead {
     display: block; margin-bottom: 4px;
     font-family: "Barlow Condensed", sans-serif;
-    font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--text-3);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent);
+  }
+  .auxPanel .copyBtn { top: 4px; right: 4px; }
+  .auxPanel .auxIc {
+    display: inline-block; vertical-align: -2px; margin-right: 5px;
+    font-size: 14px; color: var(--warn);
   }
 
   .msgTools { display: flex; gap: 8px; margin-top: 6px; padding-left: 2px; }
@@ -579,11 +610,11 @@
 
   .composer {
     position: relative;
-    display: flex; align-items: flex-end; gap: 8px;
+    display: flex; align-items: center; gap: 8px;
     border: 1px solid var(--border);
     background: var(--panel-2);
     border-radius: 14px;
-    padding: 12px 8px 8px 8px;
+    padding: 10px 8px;
   }
   .composer:focus-within { border-color: var(--accent); }
   /* Alça para redimensionar o campo de texto: arrastar pra cima aumenta. */
@@ -658,6 +689,23 @@
   }
   .attachChip button:hover { color: var(--accent); }
   .attachChip.processing .attachName { color: var(--text-3); font-style: italic; }
+  /* Barra de carregamento do anexo: determinada no OCR (pág. n/total),
+     indeterminada no resto. */
+  .attachBar {
+    flex: 0 0 auto; position: relative; overflow: hidden;
+    width: 46px; height: 4px; border-radius: 2px;
+    background: var(--border);
+  }
+  .attachBar > span {
+    position: absolute; top: 0; bottom: 0; left: 0;
+    border-radius: 2px; background: var(--warn);
+    transition: width 0.3s ease;
+  }
+  .attachBar.indet > span { width: 40%; animation: attachIndet 1.1s ease-in-out infinite; }
+  @keyframes attachIndet {
+    from { left: -40%; }
+    to { left: 100%; }
+  }
 
   #input {
     flex: 1;
@@ -741,6 +789,8 @@
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol>
   <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16a2 2 0 0 1-1-1.7V5a2 2 0 0 1 2-2h9.3A2 2 0 0 1 16 4"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2.5 2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="currentColor"/></symbol>
   <symbol id="i-flame"viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
 </svg>
 
@@ -822,7 +872,7 @@
     <button class="dockReset" id="resetBtnBig" type="button" hidden>
       <svg class="ic"><use href="#i-new"/></svg> Nova ocorrência
     </button>
-    <div class="status" id="statusPill"><span class="dot"></span><span id="statusText">PRONTO</span></div>
+    <div class="status" id="statusPill"><span class="dot"></span><span class="statusText" id="statusText">PRONTO</span></div>
   </div>
 </main>
 
@@ -939,8 +989,13 @@
   var destaqueCbu = false;     // o CBU deliberou destaque para esta ocorrência?
 
   function setStatus(text, isBusy) {
-    els.statusText.textContent = text;
     els.statusPill.classList.toggle("busy", !!isBusy);
+    if (els.statusText.textContent === text) return;
+    els.statusText.textContent = text;
+    // reinicia a animação de entrada do texto
+    els.statusText.classList.remove("swap");
+    void els.statusText.offsetWidth;
+    els.statusText.classList.add("swap");
   }
 
   function scrollToBottom() {
@@ -984,6 +1039,60 @@
     };
   }
 
+  // Botão Copiar (ícone no canto superior direito). Copia o data-raw de `holder`.
+  function makeCopyBtn(holder, label) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "copyBtn";
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
+    btn.innerHTML = icon("copy");
+    btn.onclick = function () {
+      var text = holder.getAttribute("data-raw") || "";
+      navigator.clipboard.writeText(text).then(function () {
+        btn.innerHTML = icon("check");
+        btn.classList.add("done");
+        btn.title = "Copiado";
+        setTimeout(function () {
+          btn.innerHTML = icon("copy");
+          btn.classList.remove("done");
+          btn.title = label;
+        }, 1500);
+      });
+    };
+    return btn;
+  }
+
+  var ENQ_RE = /^[ \t]*\*{0,2}[ \t]*ENQUADRAMENTO\b/i;
+  var PEND_RE = /^[ \t]*\*{0,2}[ \t]*PEND[ÊE]NCIAS DE PREENCHIMENTO\b/i;
+  // Critério confirmado ("Item 3.x" / "Itens 3.x e 3.y"); "A confirmar" e
+  // "Nenhum critério" não ganham a estrela.
+  var ENQ_DESTAQUE_RE = /ENQUADRAMENTO:?\*?:?\s*Ite(?:m|ns)\s+3\.\d/i;
+
+  // Enquadramento sozinho (sem as pendências), para mandar ao CBU.
+  function extrairEnquadramento(apoio) {
+    var lines = apoio.split("\n"), out = [], dentro = false;
+    for (var i = 0; i < lines.length; i++) {
+      if (ENQ_RE.test(lines[i])) dentro = true;
+      else if (PEND_RE.test(lines[i])) dentro = false;
+      if (dentro) out.push(lines[i]);
+    }
+    return out.join("\n").trim();
+  }
+
+  function apoioHtml(apoio) {
+    return apoio.split("\n").map(function (line) {
+      var html = telegramHtml(line);
+      if (PEND_RE.test(line)) {
+        return '<span class="auxIc" title="Campos a preencher">' + icon("alert") + '</span>' + html;
+      }
+      if (ENQ_RE.test(line) && ENQ_DESTAQUE_RE.test(line)) {
+        return '<span class="auxIc" title="Há critério de destaque">' + icon("star") + '</span>' + html;
+      }
+      return html;
+    }).join("\n");
+  }
+
   function renderTelegramPreview(bubble, rawText) {
     var parts = splitApoio(rawText);
     bubble.setAttribute("data-raw", parts.anuncio);
@@ -995,8 +1104,12 @@
     if (parts.apoio) {
       var aux = document.createElement("div");
       aux.className = "auxPanel";
-      aux.innerHTML = '<span class="auxHead">APOIO AO DESPACHANTE · NÃO VAI NO COPIAR</span>' +
-        telegramHtml(parts.apoio);
+      aux.innerHTML = '<span class="auxHead">APOIO AO DESPACHANTE</span>' + apoioHtml(parts.apoio);
+      var enq = extrairEnquadramento(parts.apoio);
+      if (enq) {
+        aux.setAttribute("data-raw", enq);
+        aux.appendChild(makeCopyBtn(aux, "Copiar enquadramento (para o CBU)"));
+      }
       wrap.insertBefore(aux, bubble.nextSibling);
     }
   }
@@ -1035,30 +1148,11 @@
     var bubble = document.createElement("div");
     bubble.className = "bubble";
 
-    var copyBtn = document.createElement("button");
-    copyBtn.type = "button";
-    copyBtn.className = "copyBtn";
-    copyBtn.title = "Copiar anúncio";
-    copyBtn.setAttribute("aria-label", "Copiar anúncio");
-    copyBtn.innerHTML = icon("copy");
-    copyBtn.onclick = function () {
-      var text = bubble.getAttribute("data-raw") || "";
-      navigator.clipboard.writeText(text).then(function () {
-        copyBtn.innerHTML = icon("check");
-        copyBtn.classList.add("done");
-        copyBtn.title = "Copiado";
-        setTimeout(function () {
-          copyBtn.innerHTML = icon("copy");
-          copyBtn.classList.remove("done");
-          copyBtn.title = "Copiar anúncio";
-        }, 1500);
-      });
-    };
-    bubble.appendChild(copyBtn);
+    bubble.appendChild(makeCopyBtn(bubble, "Copiar anúncio"));
 
     var body = document.createElement("div");
     body.className = "bubbleBody";
-    body.innerHTML = '<span class="think">Pensando…</span>';
+    body.innerHTML = '<span class="think">Pensando<span class="dots"><i>.</i><i>.</i><i>.</i></span></span>';
     bubble.appendChild(body);
     wrap.appendChild(bubble);
 
@@ -1554,6 +1648,16 @@
       name.className = "attachName";
       name.textContent = a.processing ? (a.name + " — " + (a.progress || "lendo") + "…") : a.name;
       chip.appendChild(name);
+      if (a.processing) {
+        var bar = document.createElement("span");
+        var hasPct = typeof a.pct === "number";
+        bar.className = "attachBar" + (hasPct ? "" : " indet");
+        bar.setAttribute("role", "progressbar");
+        var fill = document.createElement("span");
+        if (hasPct) fill.style.width = Math.round(a.pct * 100) + "%";
+        bar.appendChild(fill);
+        chip.appendChild(bar);
+      }
       var rm = document.createElement("button");
       rm.type = "button";
       rm.innerHTML = icon("x");
@@ -1562,6 +1666,18 @@
       chip.appendChild(rm);
       els.attachStrip.appendChild(chip);
     });
+    updateSendLock();
+  }
+
+  // Enquanto algum anexo carrega, o envio fica bloqueado (botão e Enter).
+  function anexoCarregando() {
+    return attachments.some(function (a) { return a.processing; });
+  }
+  function updateSendLock() {
+    if (busy) return; // durante a geração o botão é o "Parar"
+    var lock = anexoCarregando();
+    els.sendBtn.disabled = lock;
+    els.sendBtn.title = lock ? "Aguarde o anexo terminar de carregar" : "Enviar";
   }
 
   function removeAttachment(id) {
@@ -1757,6 +1873,7 @@
       var ocrParts = [];
       for (var r = 1; r <= maxPages; r++) {
         entry.progress = "OCR pág. " + r + "/" + maxPages;
+        entry.pct = (r - 1) / maxPages;
         renderAttachStrip();
         var pg = await pdf.getPage(r);
         var viewport = pg.getViewport({ scale: 2.5 }); // resolução maior = OCR mais preciso
@@ -1852,10 +1969,7 @@
   async function send() {
     if (busy) return;
     hidePostGenToast();
-    if (attachments.some(function (a) { return a.processing; })) {
-      addErrorBubble("Aguarde o carregamento do(s) anexo(s) antes de enviar.");
-      return;
-    }
+    if (anexoCarregando()) return; // botão já está bloqueado; Enter também não envia
     var raw = els.input.value.trim();
     var imageAttachments = attachments.filter(function (a) { return a.kind === "image" && a.base64; });
     var pdfTexts = attachments.filter(function (a) { return a.kind === "pdf-text" && a.pdfText; }).map(function (a) { return a.pdfText; });
@@ -1940,10 +2054,9 @@
       }
     } finally {
       busy = false;
-      els.sendBtn.disabled = false;
       els.sendBtn.innerHTML = icon("send");
-      els.sendBtn.title = "Enviar";
       els.sendBtn.classList.remove("stop");
+      updateSendLock(); // anexo adicionado durante a geração pode estar carregando
       setCbuEnabled(true);
       setStatus("PRONTO", false);
       scrollToBottom();
