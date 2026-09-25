@@ -155,6 +155,11 @@
   }
   .status.busy { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
   .status.busy .dot { background: var(--warn); animation: pulseWarn 0.9s infinite; transform: scale(1.15); }
+  /* Salvo / Não salvo: estado de repouso depois de gerar nesta conversa. */
+  .status.saved { color: var(--ok); border-color: var(--ok); background: var(--ok-bg); }
+  .status.saved .dot { animation: none; }
+  .status.unsaved { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+  .status.unsaved .dot { background: var(--warn); animation: none; }
   /* Troca de texto: o novo estado entra deslizando de baixo. */
   .status .statusText { display: inline-block; }
   .status .statusText.swap { animation: statusIn 0.28s ease; }
@@ -987,15 +992,32 @@
   var abortCtl = null;
   var currentAnuncioId = null; // registro no histórico (tabela anuncios) desta conversa
   var destaqueCbu = false;     // o CBU deliberou destaque para esta ocorrência?
+  // Último anúncio gerado nesta conversa ficou no histórico? null = nada
+  // gerado ainda (feed vazio ou só o anúncio aberto do histórico).
+  var salvo = null;
 
-  function setStatus(text, isBusy) {
-    els.statusPill.classList.toggle("busy", !!isBusy);
+  // kind: "busy" | "saved" | "unsaved" | vazio (pronto)
+  function setStatus(text, kind) {
+    ["busy", "saved", "unsaved"].forEach(function (c) {
+      els.statusPill.classList.toggle(c, kind === c);
+    });
     if (els.statusText.textContent === text) return;
     els.statusText.textContent = text;
     // reinicia a animação de entrada do texto
     els.statusText.classList.remove("swap");
     void els.statusText.offsetWidth;
     els.statusText.classList.add("swap");
+  }
+
+  function setSalvo(v) {
+    salvo = v;
+    statusRepouso();
+  }
+
+  function statusRepouso() {
+    if (salvo === true) setStatus("SALVO", "saved");
+    else if (salvo === false) setStatus("NÃO SALVO", "unsaved");
+    else setStatus("PRONTO");
   }
 
   function scrollToBottom() {
@@ -1328,6 +1350,7 @@
     hidePostGenToast();
     marcarInicioConversa = false;
     currentAnuncioId = null;
+    setSalvo(null);
     setDestaque(false);
     selectChip("Novo anúncio");
   }
@@ -1567,12 +1590,13 @@
     if (!currentAnuncioId) {
       setDestaque(want);
       showDeliberacao(trocarTituloLocal(ultimo.content, want), want);
+      setSalvo(false);
       return;
     }
 
     busy = true;
     setCbuEnabled(false);
-    setStatus("ATUALIZANDO", true);
+    setStatus("ATUALIZANDO", "busy");
     try {
       var r = await callFunction({ action: "marcar_destaque", id: currentAnuncioId, destaque: want });
       if (!r.ok || !r.data || !r.data.text) {
@@ -1581,6 +1605,7 @@
       } else {
         setDestaque(want);
         showDeliberacao(r.data.text, want);
+        salvo = true;
       }
     } catch (_e) {
       setDestaque(!want);
@@ -1588,7 +1613,7 @@
     } finally {
       busy = false;
       setCbuEnabled(true);
-      setStatus("PRONTO", false);
+      statusRepouso();
     }
   });
 
@@ -2011,7 +2036,7 @@
     els.sendBtn.title = "Parar";
     els.sendBtn.classList.add("stop");
     setCbuEnabled(false);
-    setStatus("GERANDO", true);
+    setStatus("GERANDO", "busy");
 
     var bubble = addAssistantBubble();
     abortCtl = new AbortController();
@@ -2035,7 +2060,9 @@
         turns.push({ role: "assistant", content: data.text });
         if (data.anuncio && data.anuncio.id) {
           currentAnuncioId = data.anuncio.id;
+          salvo = true;
         } else {
+          salvo = false;
           var note = document.createElement("span");
           note.className = "msgNote";
           note.textContent = "não salvo no histórico";
@@ -2058,7 +2085,7 @@
       els.sendBtn.classList.remove("stop");
       updateSendLock(); // anexo adicionado durante a geração pode estar carregando
       setCbuEnabled(true);
-      setStatus("PRONTO", false);
+      statusRepouso();
       scrollToBottom();
     }
   }
