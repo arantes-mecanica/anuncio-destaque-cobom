@@ -9,6 +9,7 @@
 //   (nenhuma)         gera/atualiza o anúncio via Groq e grava no histórico
 //   "listar"          anúncios ainda dentro das 48h
 //   "marcar_destaque" troca o título Relevância ⇄ Destaque, sem chamar a Groq
+//   "excluir"         remove um anúncio do histórico
 //
 // Por que Groq em vez de Gemini/Anthropic: sem custo (nível gratuito sem
 // cartão), sem uso dos dados para treinamento em nenhum nível (gratuito ou
@@ -250,6 +251,23 @@ async function marcarDestaque(id: unknown, destaque: unknown): Promise<Response>
   }
 }
 
+async function excluirAnuncio(id: unknown): Promise<Response> {
+  if (typeof id !== "string" || !UUID_RE.test(id)) {
+    return json({ error: "invalid_request" }, 400);
+  }
+  const db = dbClient();
+  if (!db) return json({ error: "historico_indisponivel" }, 503);
+  try {
+    const { data, error } = await db.from("anuncios").delete().eq("id", id).select("id");
+    if (error) throw error;
+    if (!data || !data.length) return json({ error: "not_found" }, 404);
+    return json({ ok: true });
+  } catch (e) {
+    console.error("Erro ao excluir anúncio:", e);
+    return json({ error: "historico_indisponivel" }, 503);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -269,6 +287,7 @@ Deno.serve(async (req: Request) => {
 
   if (body?.action === "listar") return listarAnuncios();
   if (body?.action === "marcar_destaque") return marcarDestaque(body.id, body.destaque);
+  if (body?.action === "excluir") return excluirAnuncio(body.id);
 
   let turns: Turn[];
   let attachments: Attachment[];
