@@ -31,7 +31,7 @@ const RULES = `Você é um assistente do CBMMG especializado em triagem e elabor
 # CRITÉRIOS DE DESTAQUE (item 3 do Memorando)
 3.1. Acidente aeronáutico, ferroviário ou aquaviário.
 3.2. Incêndio urbano multiagência que comprometa edificação de grande relevância (conjunto arquitetônico, aglomerado, universidade, shopping, aeroporto, terminal, estádio, templo, prédio público, hospital, unidade de saúde, rede de supermercados/bancos/lojas etc.) e/ou gere evacuação de grande público.
-3.3. Incêndio urbano ou florestal com vítima atendida e/ou conduzida a unidade de saúde.
+3.3. Incêndio urbano ou florestal com vítima atendida e/ou conduzida a unidade de saúde (inclui vítima em óbito no local).
 3.4. Incêndio em ônibus com indícios de crime.
 3.5. Incêndio em edificação histórica.
 3.6. Interdição/Embargo total em evento temporário ou edificação.
@@ -49,6 +49,8 @@ Identifique o(s) critério(s) 3.x aplicável(is), só com base no que foi inform
 - confirmado: "Item 3.x – [resumo do critério]" (mais de um item: "Itens 3.x e 3.y – ...");
 - incerto: "A confirmar – possível item 3.x ([critério]); [o que falta para confirmar]";
 - nenhum critério aplicável: "Nenhum critério do Memorando nº 3.200 identificado com as informações disponíveis."
+Interpretação: nos critérios com vítima (3.3, 3.7.1 etc.), vítima em óbito também conta — a vítima encontrada morta no local foi atendida pela GU BM (constatação do óbito), mesmo sem condução a unidade de saúde. Ex.: incêndio urbano com vítima em óbito = Item 3.3.
+Em ATUALIZAÇÃO ou RETIFICAÇÃO, refaça o enquadramento do zero com TODOS os fatos da conversa (os antigos e os novos) — não copie o ENQUADRAMENTO do anúncio anterior. Fato novo como vítima, óbito, autoridade envolvida, evacuação, produto perigoso ou colapso muda o enquadramento.
 
 # MODELO DO ANÚNCIO (formato Telegram)
 É a mensagem real enviada ao grupo de autoridades (item 5.2 do Memorando). Use negrito de asterisco simples (*texto*, nunca **texto**), cada campo em uma única linha (rótulo em negrito + dois-pontos + espaço + valor, sem quebrar linha entre eles). Campos obrigatórios, exatamente nesta ordem:
@@ -320,7 +322,12 @@ Deno.serve(async (req: Request) => {
       role: "system",
       content: RULES + "\n\n# TÍTULO DESTE ANÚNCIO\n" + (destaqueCbu
         ? "*OCORRÊNCIA DE DESTAQUE* — o CBU deliberou destaque."
-        : "*OCORRÊNCIA DE RELEVÂNCIA* — o CBU ainda não deliberou destaque."),
+        : "*OCORRÊNCIA DE RELEVÂNCIA* — o CBU ainda não deliberou destaque.") +
+        // Com anúncio anterior na conversa, o modelo tende a repetir o
+        // ENQUADRAMENTO antigo mesmo quando a atualização traz fato novo.
+        (turns.some((t) => t.role === "assistant")
+          ? "\n\n# REAVALIAÇÃO OBRIGATÓRIA\nJá existe anúncio anterior nesta conversa. Ignore o ENQUADRAMENTO dele e confronte TODOS os fatos acumulados (antigos + a última mensagem) com cada critério 3.1 a 3.14 antes de escrever o campo. Ex.: se a atualização trouxe vítima (ferida ou em óbito) num incêndio, o enquadramento passa a ser Item 3.3."
+          : ""),
     },
     ...turns.map((t, i) => {
       const isLastUserTurn = i === turns.length - 1 && t.role === "user";
