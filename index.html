@@ -160,6 +160,9 @@
   .status.saved .dot { animation: none; }
   .status.unsaved { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
   .status.unsaved .dot { background: var(--warn); animation: none; }
+  /* Deliberação do CBU marcada, esperando o Enviar. */
+  .status.pending { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+  .status.pending .dot { background: var(--warn); animation: pulseWarn 1.4s infinite; }
   /* Troca de texto: o novo estado entra deslizando de baixo. */
   .status .statusText { display: inline-block; }
   .status .statusText.swap { animation: statusIn 0.28s ease; }
@@ -247,7 +250,7 @@
     flex: 0 0 auto;
     font-family: "Barlow Condensed", sans-serif;
   }
-  .headerBtn:hover { border-color: var(--accent); color: var(--accent); background: var(--panel); }
+  .headerBtn:hover, .chip:not(.active):hover { border-color: var(--accent); color: var(--accent); background: var(--panel); }
   .headerBtn .ic { font-size: 16px; }
   .headerBtn .hbLabel {
     font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em;
@@ -288,7 +291,7 @@
   #historyModal {
     position: fixed;
     left: 50%; top: 50%;
-    width: min(820px, calc(100vw - 32px));
+    width: min(920px, calc(100vw - 32px));
     max-height: calc(100dvh - 64px);
     background: var(--panel);
     border: 1px solid var(--border);
@@ -349,6 +352,16 @@
     border-radius: 16px; padding: 5px 12px; cursor: pointer; white-space: nowrap;
   }
   .openBtn:hover { background: var(--accent); color: var(--accent-ink); }
+  .rowActions { display: flex; gap: 6px; justify-content: flex-end; }
+  .delBtn {
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em;
+    border: 1px solid var(--border); color: var(--text-2); background: transparent;
+    border-radius: 16px; padding: 5px 10px; cursor: pointer; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .delBtn .ic { font-size: 13px; }
+  .delBtn:hover { border-color: var(--accent); color: var(--accent); }
   /* ---------- Confirmação (no lugar do confirm() nativo, que o navegador pode bloquear) ---------- */
   #confirmBox {
     position: fixed; inset: 0;
@@ -376,6 +389,7 @@
   #confirmYes { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); }
   @media (max-width: 560px) {
     table.hist .colUpd { display: none; }
+    .delBtn .lbl { display: none; }
     table.hist td, table.hist th { padding-left: 8px; padding-right: 8px; }
   }
 
@@ -563,6 +577,15 @@
     font-size: 13px;
     max-width: 88%;
   }
+  .retryBtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 8px; padding: 5px 10px;
+    font: inherit; font-size: 12px; font-weight: 700;
+    color: var(--warn); background: transparent;
+    border: 1px solid var(--warn); border-radius: 7px; cursor: pointer;
+  }
+  .retryBtn:hover { background: var(--warn); color: var(--warn-bg); }
+  .retryBtn .ic { width: 14px; height: 14px; }
 
   /* ---------- Composer ---------- */
   footer {
@@ -739,6 +762,7 @@
     font-size: 21px;
     padding: 0;
   }
+  #sendBtn:not(:disabled):hover { filter: brightness(1.12); box-shadow: 0 0 0 3px var(--panel-2); }
   #sendBtn:disabled { opacity: 0.4; cursor: default; }
   #sendBtn.stop { background: var(--warn); }
 
@@ -790,8 +814,10 @@
   <symbol id="i-send" viewBox="0 0 24 24"><path d="M3.4 20.4 21 12 3.4 3.6v6.5L15 12 3.4 13.9z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></symbol>
   <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16a2 2 0 0 1-1-1.7V5a2 2 0 0 1 2-2h9.3A2 2 0 0 1 16 4"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
@@ -995,12 +1021,18 @@
   // Último anúncio gerado nesta conversa ficou no histórico? null = nada
   // gerado ainda (feed vazio ou só o anúncio aberto do histórico).
   var salvo = null;
+  // Título (Destaque?) do último anúncio desta conversa. O switch do CBU só
+  // registra a intenção; ela vale no próximo Enviar.
+  var destaqueSalvo = false;
 
   // kind: "busy" | "saved" | "unsaved" | vazio (pronto)
   function setStatus(text, kind) {
-    ["busy", "saved", "unsaved"].forEach(function (c) {
+    ["busy", "saved", "unsaved", "pending"].forEach(function (c) {
       els.statusPill.classList.toggle(c, kind === c);
     });
+    els.statusPill.title = kind === "pending"
+      ? "Envie para aplicar a deliberação do CBU. Você pode incluir mais informações no campo antes de enviar."
+      : "";
     if (els.statusText.textContent === text) return;
     els.statusText.textContent = text;
     // reinicia a animação de entrada do texto
@@ -1015,7 +1047,8 @@
   }
 
   function statusRepouso() {
-    if (salvo === true) setStatus("SALVO", "saved");
+    if (destaquePendente()) setStatus("AGUARDANDO ENVIO", "pending");
+    else if (salvo === true) setStatus("SALVO", "saved");
     else if (salvo === false) setStatus("NÃO SALVO", "unsaved");
     else setStatus("PRONTO");
   }
@@ -1160,6 +1193,7 @@
     row.appendChild(bubble);
     els.feed.appendChild(row);
     scrollToBottom();
+    return row;
   }
 
   function addAssistantBubble() {
@@ -1188,15 +1222,36 @@
     return bubble;
   }
 
-  function addErrorBubble(msg) {
+  // retry (opcional): mostra "Tentar de novo"; a função recebe a linha do erro
+  // para removê-la antes de repetir o pedido.
+  function addErrorBubble(msg, retry) {
     var row = document.createElement("div");
     row.className = "msg assistant";
     var bubble = document.createElement("div");
     bubble.className = "errBubble";
-    bubble.textContent = msg;
+    var text = document.createElement("div");
+    text.textContent = msg;
+    bubble.appendChild(text);
+    if (retry) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "retryBtn";
+      btn.innerHTML = icon("retry") + "Tentar de novo";
+      btn.addEventListener("click", function () {
+        if (busy) return;
+        retry(row);
+      });
+      bubble.appendChild(btn);
+    }
     row.appendChild(bubble);
     els.feed.appendChild(row);
     scrollToBottom();
+    return row;
+  }
+
+  // Erros que não se resolvem repetindo o mesmo pedido.
+  function erroDefinitivo(code) {
+    return code === "invalid_request" || code === "server_misconfigured";
   }
 
   function errorCopy(code) {
@@ -1204,7 +1259,7 @@
       case "invalid_request": return "Requisição inválida — recarregue a página e tente de novo.";
       case "server_misconfigured": return "A Edge Function está sem a chave da Groq configurada (GROQ_API_KEY). Avise quem administra o Supabase do projeto.";
       case "upstream_error": return "A API da Groq recusou ou falhou a chamada. Tente novamente em instantes.";
-      case "model_overloaded": return "A Groq está com alta demanda no momento (já tentamos de novo automaticamente). Aguarde um pouco e tente enviar de novo.";
+      case "model_overloaded": return "A Groq está com alta demanda no momento (já tentamos de novo automaticamente). Aguarde um pouco e tente de novo.";
       case "empty_completion": return "Não foi possível gerar uma resposta. Tente descrever a ocorrência com mais detalhes.";
       case "network_error": return "Não foi possível conectar à Edge Function. Confira a URL configurada e sua conexão.";
       case "historico_indisponivel": return "Histórico indisponível no momento (banco de dados não configurado ou fora do ar). A geração de anúncios continua funcionando.";
@@ -1350,8 +1405,9 @@
     hidePostGenToast();
     marcarInicioConversa = false;
     currentAnuncioId = null;
-    setSalvo(null);
+    destaqueSalvo = false;
     setDestaque(false);
+    setSalvo(null);
     selectChip("Novo anúncio");
   }
 
@@ -1496,11 +1552,24 @@
       tdUpd.textContent = fmtHaQuanto(a.updated_at);
 
       var tdBtn = document.createElement("td");
+      var acoes = document.createElement("div");
+      acoes.className = "rowActions";
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "openBtn";
       btn.textContent = "Abrir";
-      tdBtn.appendChild(btn);
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "delBtn";
+      del.title = "Excluir do histórico";
+      del.innerHTML = icon("trash") + '<span class="lbl">Excluir</span>';
+      del.addEventListener("click", function (e) {
+        e.stopPropagation(); // não abrir o anúncio pelo clique na linha
+        excluirDoHistorico(a);
+      });
+      acoes.appendChild(btn);
+      acoes.appendChild(del);
+      tdBtn.appendChild(acoes);
 
       tr.appendChild(tdData);
       tr.appendChild(tdLocal);
@@ -1516,6 +1585,32 @@
     els.historyBody.appendChild(table);
   }
 
+  function excluirDoHistorico(a) {
+    if (busy) return;
+    pedirConfirmacao("Excluir este anúncio do histórico? Esta ação não pode ser desfeita.", "Excluir",
+      async function () {
+        historyMsg("Excluindo…");
+        var r;
+        try {
+          r = await callFunction({ action: "excluir", id: a.id });
+        } catch (_e) {
+          historyMsg(errorCopy("network_error"));
+          return;
+        }
+        var code = r.data && r.data.error;
+        if (!r.ok && code !== "not_found") {
+          historyMsg(errorCopy(code || "historico_indisponivel"));
+          return;
+        }
+        // O anúncio da tela saiu do histórico: o próximo envio cria outro registro.
+        if (a.id === currentAnuncioId) {
+          currentAnuncioId = null;
+          setSalvo(false);
+        }
+        loadHistory();
+      });
+  }
+
   // Carrega o anúncio escolhido como "último anúncio" da conversa: o próximo
   // envio (Atualização/Retificação) parte dele e sobrescreve o mesmo registro.
   function openFromHistory(a) {
@@ -1529,7 +1624,8 @@
     if (busy) return;
     clearConversation();
     currentAnuncioId = a.id;
-    setDestaque(!!a.destaque_cbu);
+    destaqueSalvo = !!a.destaque_cbu;
+    setDestaque(destaqueSalvo);
     turns = [
       { role: "user", content: "(Anúncio recuperado do histórico — é o último anúncio desta ocorrência.)" },
       { role: "assistant", content: a.texto }
@@ -1574,48 +1670,67 @@
   function showDeliberacao(texto, destaque) {
     marcarInicio();
     var bubble = addAssistantBubble();
-    addTagAbove(bubble, destaque ? "retificacao" : "novo",
-      destaque ? "DESTAQUE — DELIBERADO PELO CBU" : "RELEVÂNCIA — DESTAQUE DESMARCADO");
+    addTagAbove(bubble, destaque ? "retificacao" : "novo", rotuloDeliberacao(destaque));
     renderTelegramPreview(bubble, texto);
     lastAssistantTurn().content = texto;
   }
 
-  els.cbuToggle.addEventListener("change", async function () {
+  function rotuloDeliberacao(destaque) {
+    return destaque ? "DESTAQUE — DELIBERADO PELO CBU" : "RELEVÂNCIA — DESTAQUE DESMARCADO";
+  }
+
+  // Há anúncio nesta conversa e o switch difere do título dele?
+  function destaquePendente() {
+    return !!lastAssistantTurn() && destaqueCbu !== destaqueSalvo;
+  }
+
+  // O switch só registra a deliberação; ela é aplicada no Enviar, junto com o
+  // que o despachante tiver escrito (um request só).
+  els.cbuToggle.addEventListener("change", function () {
     var want = els.cbuToggle.checked;
     if (busy) { setDestaque(!want); return; }
+    setDestaque(want);
+    statusRepouso();
+  });
 
+  // Enviar com o campo vazio e deliberação pendente: só troca o título.
+  async function aplicarDeliberacao() {
+    var want = destaqueCbu;
     var ultimo = lastAssistantTurn();
-    if (!ultimo) { setDestaque(want); return; } // ainda sem anúncio: vale para a geração
 
     if (!currentAnuncioId) {
-      setDestaque(want);
+      destaqueSalvo = want;
       showDeliberacao(trocarTituloLocal(ultimo.content, want), want);
       setSalvo(false);
       return;
     }
 
+    var tentarDeNovo = function (errRow) {
+      errRow.remove();
+      if (destaquePendente()) aplicarDeliberacao();
+    };
     busy = true;
     setCbuEnabled(false);
     setStatus("ATUALIZANDO", "busy");
     try {
       var r = await callFunction({ action: "marcar_destaque", id: currentAnuncioId, destaque: want });
       if (!r.ok || !r.data || !r.data.text) {
-        setDestaque(!want);
-        addErrorBubble(errorCopy((r.data && r.data.error) || "historico_indisponivel"));
+        var code = (r.data && r.data.error) || "historico_indisponivel";
+        addErrorBubble(errorCopy(code), erroDefinitivo(code) || code === "not_found" ? null : tentarDeNovo);
       } else {
-        setDestaque(want);
+        destaqueSalvo = want;
         showDeliberacao(r.data.text, want);
         salvo = true;
       }
     } catch (_e) {
-      setDestaque(!want);
-      addErrorBubble(errorCopy("network_error"));
+      addErrorBubble(errorCopy("network_error"), tentarDeNovo);
     } finally {
       busy = false;
       setCbuEnabled(true);
       statusRepouso();
+      scrollToBottom();
     }
-  });
+  }
 
   // ---------- Anexos (imagem + PDF) ----------
   // Imagem vai direto pro modelo com visão da Groq (qwen/qwen3.8-27b, até
@@ -1999,8 +2114,12 @@
     var imageAttachments = attachments.filter(function (a) { return a.kind === "image" && a.base64; });
     var pdfTexts = attachments.filter(function (a) { return a.kind === "pdf-text" && a.pdfText; }).map(function (a) { return a.pdfText; });
     var attachmentCount = imageAttachments.length + pdfTexts.length;
-    if (!raw && attachmentCount === 0) return;
+    if (!raw && attachmentCount === 0) {
+      if (destaquePendente()) aplicarDeliberacao();
+      return;
+    }
     if (recognizing) stopDictation();
+    var deliberou = destaquePendente(); // a geração já leva o destaqueCbu
 
     if (!EDGE_FUNCTION_URL || EDGE_FUNCTION_URL.indexOf("SEU_PROJECT_REF") !== -1) {
       addErrorBubble("Configure EDGE_FUNCTION_URL no início do <script> com a URL real da sua Supabase Edge Function.");
@@ -2023,12 +2142,23 @@
       return { mimeType: a.mimeType, data: a.base64 };
     });
 
-    addUserBubble(bubbleLabel);
     els.input.value = "";
     autoResize();
     clearAttachments();
 
-    turns.push({ role: "user", content: messageForModel });
+    gerar({ label: bubbleLabel, message: messageForModel, attachments: attachmentsPayload }, deliberou);
+  }
+
+  // Um pedido de geração. Fica separado do send() para o "Tentar de novo"
+  // repetir o mesmo pedido (texto + anexos) sem o despachante redigitar.
+  async function gerar(pedido, deliberou) {
+    var userRow = addUserBubble(pedido.label);
+    turns.push({ role: "user", content: pedido.message });
+    var tentarDeNovo = function (errRow) {
+      errRow.remove();
+      userRow.remove();
+      gerar(pedido, destaquePendente());
+    };
 
     busy = true;
     els.sendBtn.disabled = false;
@@ -2044,7 +2174,7 @@
     try {
       var r = await callFunction({
         turns: turns,
-        attachments: attachmentsPayload,
+        attachments: pedido.attachments,
         anuncioId: currentAnuncioId,
         destaqueCbu: destaqueCbu
       }, abortCtl.signal);
@@ -2053,11 +2183,13 @@
       if (!r.ok || !data || !data.text) {
         var code = (data && data.error) || "upstream_error";
         bubble.closest(".msg").remove();
-        addErrorBubble(errorCopy(code));
+        addErrorBubble(errorCopy(code), erroDefinitivo(code) ? null : tentarDeNovo);
         turns.pop(); // remove o turno do usuário que não teve resposta
       } else {
         renderTelegramPreview(bubble, data.text);
         turns.push({ role: "assistant", content: data.text });
+        if (deliberou) addTagAbove(bubble, destaqueCbu ? "retificacao" : "novo", rotuloDeliberacao(destaqueCbu));
+        destaqueSalvo = destaqueCbu;
         if (data.anuncio && data.anuncio.id) {
           currentAnuncioId = data.anuncio.id;
           salvo = true;
@@ -2075,9 +2207,9 @@
       bubble.closest(".msg").remove();
       turns.pop();
       if (e && e.name === "AbortError") {
-        addErrorBubble("Envio cancelado.");
+        addErrorBubble("Envio cancelado.", tentarDeNovo);
       } else {
-        addErrorBubble(errorCopy("network_error"));
+        addErrorBubble(errorCopy("network_error"), tentarDeNovo);
       }
     } finally {
       busy = false;
