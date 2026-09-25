@@ -1,7 +1,14 @@
 // Supabase Edge Function: gerar-anuncio
 // Recebe o histórico da conversa (turns) e chama a API da Groq para gerar
-// o Anúncio de Ocorrência de Destaque, mantendo a chave de API
-// (GROQ_API_KEY) só no servidor — nunca no navegador.
+// o Anúncio de Ocorrência, mantendo a chave de API (GROQ_API_KEY) só no
+// servidor — nunca no navegador.
+//
+// Também guarda o último texto de cada anúncio na tabela public.anuncios
+// (histórico de 48h a partir da data do fato, para atualização/retificação)
+// e aplica a deliberação de destaque do CBU. Ações (campo "action" do corpo):
+//   (nenhuma)         gera/atualiza o anúncio via Groq e grava no histórico
+//   "listar"          anúncios ainda dentro das 48h
+//   "marcar_destaque" troca o título Relevância ⇄ Destaque, sem chamar a Groq
 //
 // Por que Groq em vez de Gemini/Anthropic: sem custo (nível gratuito sem
 // cartão), sem uso dos dados para treinamento em nenhum nível (gratuito ou
@@ -17,13 +24,14 @@
 //   supabase functions serve gerar-anuncio --env-file supabase/.env.local
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const RULES = `Você é um assistente do CBMMG especializado em triagem e elaboração de Anúncios de Ocorrência de Destaque, com base no item 3 do Memorando nº 3.200 - CBMMG/BM3 (17/08/2026, SEI 1400.01.0050313/2026-06, que revogou o Memorando nº 3.192). Receba a descrição da ocorrência, identifique o enquadramento e produza o anúncio no modelo abaixo.
 
 # CRITÉRIOS DE DESTAQUE (item 3 do Memorando)
 3.1. Acidente aeronáutico, ferroviário ou aquaviário.
 3.2. Incêndio urbano multiagência que comprometa edificação de grande relevância (conjunto arquitetônico, aglomerado, universidade, shopping, aeroporto, terminal, estádio, templo, prédio público, hospital, unidade de saúde, rede de supermercados/bancos/lojas etc.) e/ou gere evacuação de grande público.
-3.3. Incêndio urbano ou florestal com vítima atendida e/ou conduzida a unidade de saúde.
+3.3. Incêndio urbano ou florestal com vítima atendida e/ou conduzida a unidade de saúde (inclui vítima em óbito no local).
 3.4. Incêndio em ônibus com indícios de crime.
 3.5. Incêndio em edificação histórica.
 3.6. Interdição/Embargo total em evento temporário ou edificação.
@@ -37,10 +45,12 @@ const RULES = `Você é um assistente do CBMMG especializado em triagem e elabor
 3.14. Comprometimento de serviço essencial (água, luz, esgoto etc.) que afete a habitabilidade da população.
 
 # ENQUADRAMENTO
-Identifique o(s) critério(s) 3.x aplicável(is), só com base no que foi informado — nunca invente. Isso alimenta o campo ENQUADRAMENTO do anúncio (é sempre o último campo, sempre presente):
+Identifique o(s) critério(s) 3.x aplicável(is), só com base no que foi informado — nunca invente. Isso alimenta o campo ENQUADRAMENTO do anúncio (é sempre o último campo, sempre presente), que é o assessoramento do COBOM ao CBU para a deliberação do destaque:
 - confirmado: "Item 3.x – [resumo do critério]" (mais de um item: "Itens 3.x e 3.y – ...");
 - incerto: "A confirmar – possível item 3.x ([critério]); [o que falta para confirmar]";
 - nenhum critério aplicável: "Nenhum critério do Memorando nº 3.200 identificado com as informações disponíveis."
+Interpretação: nos critérios com vítima (3.3, 3.7.1 etc.), vítima em óbito também conta — a vítima encontrada morta no local foi atendida pela GU BM (constatação do óbito), mesmo sem condução a unidade de saúde. Ex.: incêndio urbano com vítima em óbito = Item 3.3.
+Em ATUALIZAÇÃO ou RETIFICAÇÃO, refaça o enquadramento do zero com TODOS os fatos da conversa (os antigos e os novos) — não copie o ENQUADRAMENTO do anúncio anterior. Fato novo como vítima, óbito, autoridade envolvida, evacuação, produto perigoso ou colapso muda o enquadramento.
 
 # MODELO DO ANÚNCIO (formato Telegram)
 É a mensagem real enviada ao grupo de autoridades (item 5.2 do Memorando). Use negrito de asterisco simples (*texto*, nunca **texto**), cada campo em uma única linha (rótulo em negrito + dois-pontos + espaço + valor, sem quebrar linha entre eles). Campos obrigatórios, exatamente nesta ordem:
@@ -54,10 +64,10 @@ Identifique o(s) critério(s) 3.x aplicável(is), só com base no que foi inform
 *OCORRÊNCIA EM ANDAMENTO?:* [SIM ou NÃO]
 *ENQUADRAMENTO:* [ver seção ENQUADRAMENTO]
 
-TÍTULO: se algum critério do item 3 se aplicar (mesmo "a confirmar") → OCORRÊNCIA DE DESTAQUE. Se nenhum se aplicar → OCORRÊNCIA DE RELEVÂNCIA (mesmo modelo, mesmos campos, só o título muda). Atualização: acrescente " — ATUALIZAÇÃO" ao título (mantenha o que segue válido, substitua o alterado, reavalie o enquadramento). Retificação: acrescente " — RETIFICAÇÃO" e corrija só o que estava errado, mantendo o resto do último anúncio desta conversa.
+TÍTULO: quem decide entre OCORRÊNCIA DE DESTAQUE e OCORRÊNCIA DE RELEVÂNCIA é o CBU (Coordenador de Bombeiros da Unidade), não a análise dos critérios — o COBOM só assessora o CBU pelo campo ENQUADRAMENTO. Use exatamente o título indicado na seção "TÍTULO DESTE ANÚNCIO", no fim destas instruções, mesmo que algum critério do item 3 se aplique (mesmo modelo, mesmos campos, só o título muda). Atualização: acrescente " — ATUALIZAÇÃO" ao título (mantenha o que segue válido, substitua o alterado, reavalie o enquadramento). Retificação: acrescente " — RETIFICAÇÃO" e corrija só o que estava errado, mantendo o resto do último anúncio desta conversa (que pode ter sido recuperado do histórico).
 
 Exemplo de formatação (só o formato, não copie o conteúdo):
-*OCORRÊNCIA DE DESTAQUE*
+*OCORRÊNCIA DE RELEVÂNCIA*
 *SÍNTESE DO FATO:* Segundo solicitação, incêndio em residência unifamiliar iniciado em colchão de quarto. GU BM confirmou uma vítima consciente e orientada, com queimadura de 2º grau em membro superior, encaminhada à UPA local pela USB do SAMU. GUBM combateu as chamas e avaliou a estrutura do imóvel.
 *DATA/HORA DO INÍCIO DA OCORRÊNCIA:* 13/09/2026 – 19h50min.
 *LOCAL:* Alameda Cajueiros nº 54, Serra Verde - Pará de Minas.
@@ -111,23 +121,166 @@ const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gi
 const MAX_ATTACHMENTS = 3; // limite do modelo de visão da Groq (qwen/qwen3.8-27b)
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// ---------- Histórico (tabela public.anuncios) ----------
+
+// SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY já vêm injetadas no Supabase
+// hospedado. No container local, sem elas, a geração segue funcionando e só
+// o histórico fica indisponível.
+function dbClient(): SupabaseClient | null {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ANUNCIO_COLS = "id, destaque_cbu, data_fato, created_at, updated_at, expira_em";
+
+// Linha de título do anúncio, ex.: "*OCORRÊNCIA DE RELEVÂNCIA — ATUALIZAÇÃO*".
+// Aceita o sufixo também fora dos asteriscos ("*OCORRÊNCIA DE DESTAQUE* — ATUALIZAÇÃO"),
+// que o modelo às vezes produz; aplicarTitulo normaliza para dentro.
+const TITULO_RE =
+  /^[ \t]*\*{0,2}[ \t]*OCORR[ÊE]NCIA DE (?:DESTAQUE|RELEV[ÂA]NCIA)[ \t]*\*{0,2}([^*\n]*?)[ \t]*\*{0,2}[ \t]*$/m;
+
+// Garante o título decidido pelo CBU (o modelo pode errar). manterSufixo=false
+// descarta " — ATUALIZAÇÃO"/" — RETIFICAÇÃO": usado ao marcar/desmarcar
+// destaque, que é o primeiro disparo daquele anúncio com o novo título.
+function aplicarTitulo(texto: string, destaque: boolean, manterSufixo: boolean): string {
+  const palavra = destaque ? "DESTAQUE" : "RELEVÂNCIA";
+  const m = texto.match(TITULO_RE);
+  if (!m) return `*OCORRÊNCIA DE ${palavra}*\n` + texto;
+  const sufixo = manterSufixo && m[1].trim() ? " " + m[1].trim() : "";
+  return texto.replace(TITULO_RE, `*OCORRÊNCIA DE ${palavra}${sufixo}*`);
+}
+
+// Lê "DATA/HORA DO INÍCIO DA OCORRÊNCIA: 13/09/2026 – 19h50min" (horário de
+// Brasília). Ausente, inválida ou no futuro → null (a retenção passa a contar
+// da criação do registro).
+function extrairDataFato(texto: string): string | null {
+  const m = texto.match(
+    /DATA\/HORA DO IN[ÍI]CIO DA OCORR[ÊE]NCIA:\*?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s*[–—-]?\s*(\d{1,2})\s*[h:]\s*(\d{2})?)?/i,
+  );
+  if (!m) return null;
+  const [d, mo, y, h, mi] = [m[1], m[2], m[3], m[4] ?? "0", m[5] ?? "0"].map(Number);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59) return null;
+  const p = (n: number) => String(n).padStart(2, "0");
+  const dt = new Date(`${y}-${p(mo)}-${p(d)}T${p(h)}:${p(mi)}:00-03:00`);
+  if (isNaN(dt.getTime()) || dt.getTime() > Date.now() + 60 * 60 * 1000) return null;
+  return dt.toISOString();
+}
+
+async function purgarExpirados(db: SupabaseClient) {
+  await db.from("anuncios").delete().lt("expira_em", new Date().toISOString());
+}
+
+// Grava o texto gerado: atualiza o registro existente ou cria um novo (inclusive
+// quando o anterior já expirou). Devolve as colunas do registro gravado.
+async function salvarAnuncio(db: SupabaseClient, anuncioId: string | null, texto: string, destaque: boolean) {
+  await purgarExpirados(db);
+  const row = {
+    texto,
+    destaque_cbu: destaque,
+    data_fato: extrairDataFato(texto),
+    updated_at: new Date().toISOString(),
+  };
+  if (anuncioId) {
+    const { data, error } = await db.from("anuncios").update(row).eq("id", anuncioId).select(ANUNCIO_COLS).maybeSingle();
+    if (error) throw error;
+    if (data) return data;
+  }
+  const { data, error } = await db.from("anuncios").insert(row).select(ANUNCIO_COLS).single();
+  if (error) throw error;
+  return data;
+}
+
+async function listarAnuncios(): Promise<Response> {
+  const db = dbClient();
+  if (!db) return json({ error: "historico_indisponivel" }, 503);
+  try {
+    await purgarExpirados(db);
+    const { data, error } = await db
+      .from("anuncios")
+      .select("texto, " + ANUNCIO_COLS)
+      .gt("expira_em", new Date().toISOString())
+      .order("updated_at", { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    return json({ anuncios: data });
+  } catch (e) {
+    console.error("Erro ao listar histórico:", e);
+    return json({ error: "historico_indisponivel" }, 503);
+  }
+}
+
+async function marcarDestaque(id: unknown, destaque: unknown): Promise<Response> {
+  if (typeof id !== "string" || !UUID_RE.test(id) || typeof destaque !== "boolean") {
+    return json({ error: "invalid_request" }, 400);
+  }
+  const db = dbClient();
+  if (!db) return json({ error: "historico_indisponivel" }, 503);
+  try {
+    const { data: atual, error } = await db
+      .from("anuncios")
+      .select("texto")
+      .eq("id", id)
+      .gt("expira_em", new Date().toISOString())
+      .maybeSingle();
+    if (error) throw error;
+    if (!atual) return json({ error: "not_found" }, 404);
+
+    const texto = aplicarTitulo(atual.texto, destaque, false);
+    const { data, error: upErr } = await db
+      .from("anuncios")
+      .update({ texto, destaque_cbu: destaque, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select(ANUNCIO_COLS)
+      .single();
+    if (upErr) throw upErr;
+    return json({ text: texto, anuncio: data });
+  } catch (e) {
+    console.error("Erro ao marcar destaque:", e);
+    return json({ error: "historico_indisponivel" }, 503);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "method_not_allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "method_not_allowed" }, 405);
   }
+
+  // deno-lint-ignore no-explicit-any
+  let body: any;
+  try {
+    body = await req.json();
+  } catch (_e) {
+    return json({ error: "invalid_request" }, 400);
+  }
+
+  if (body?.action === "listar") return listarAnuncios();
+  if (body?.action === "marcar_destaque") return marcarDestaque(body.id, body.destaque);
 
   let turns: Turn[];
   let attachments: Attachment[];
+  let anuncioId: string | null;
+  let destaqueCbu: boolean;
   try {
-    const body = await req.json();
     turns = body.turns;
+    anuncioId = body.anuncioId ?? null;
+    destaqueCbu = body.destaqueCbu === true;
+    if (anuncioId !== null && (typeof anuncioId !== "string" || !UUID_RE.test(anuncioId))) {
+      throw new Error("bad_anuncio_id");
+    }
     attachments = Array.isArray(body.attachments) ? body.attachments : [];
     if (!Array.isArray(turns) || turns.length === 0) {
       throw new Error("empty");
@@ -165,7 +318,17 @@ Deno.serve(async (req: Request) => {
   // só valem para a ÚLTIMA mensagem do usuário — mesmo comportamento das
   // versões anteriores, que também não reenviam anexos de turnos antigos.
   const messages = [
-    { role: "system", content: RULES },
+    {
+      role: "system",
+      content: RULES + "\n\n# TÍTULO DESTE ANÚNCIO\n" + (destaqueCbu
+        ? "*OCORRÊNCIA DE DESTAQUE* — o CBU deliberou destaque."
+        : "*OCORRÊNCIA DE RELEVÂNCIA* — o CBU ainda não deliberou destaque.") +
+        // Com anúncio anterior na conversa, o modelo tende a repetir o
+        // ENQUADRAMENTO antigo mesmo quando a atualização traz fato novo.
+        (turns.some((t) => t.role === "assistant")
+          ? "\n\n# REAVALIAÇÃO OBRIGATÓRIA\nJá existe anúncio anterior nesta conversa. Ignore o ENQUADRAMENTO dele e confronte TODOS os fatos acumulados (antigos + a última mensagem) com cada critério 3.1 a 3.14 antes de escrever o campo. Ex.: se a atualização trouxe vítima (ferida ou em óbito) num incêndio, o enquadramento passa a ser Item 3.3."
+          : ""),
+    },
     ...turns.map((t, i) => {
       const isLastUserTurn = i === turns.length - 1 && t.role === "user";
       if (isLastUserTurn && attachments.length > 0) {
@@ -230,9 +393,9 @@ Deno.serve(async (req: Request) => {
     }
 
     const data = await groqRes.json();
-    const text = data.choices?.[0]?.message?.content || "";
+    const rawText = data.choices?.[0]?.message?.content || "";
 
-    if (!text) {
+    if (!rawText) {
       console.error("Resposta vazia da Groq:", JSON.stringify(data));
       return new Response(JSON.stringify({ error: "empty_completion" }), {
         status: 502,
@@ -240,9 +403,21 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    return new Response(JSON.stringify({ text }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const text = aplicarTitulo(rawText, destaqueCbu, true);
+
+    // Falha ao gravar no histórico não derruba o anúncio já gerado: o texto
+    // volta normalmente e o front avisa que ele não ficou salvo.
+    let anuncio = null;
+    const db = dbClient();
+    if (db) {
+      try {
+        anuncio = await salvarAnuncio(db, anuncioId, text, destaqueCbu);
+      } catch (e) {
+        console.error("Erro ao gravar no histórico:", e);
+      }
+    }
+
+    return json({ text, anuncio });
   } catch (e) {
     console.error("Edge function error:", e);
     return new Response(JSON.stringify({ error: "internal_error" }), {

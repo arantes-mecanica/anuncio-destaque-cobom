@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Anúncio de Ocorrência de Destaque · CBMMG</title>
+<title>Anúncio de Ocorrência · CBMMG</title>
 <link rel="icon" type="image/png" href="assets/favicon-cbmmg.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -103,15 +103,16 @@
     justify-content: space-between;
     gap: 16px;
   }
-  .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-  .brand .mark {
-    font-family: "Barlow Condensed", sans-serif;
-    font-weight: 700;
-    font-size: 13px;
-    letter-spacing: 0.14em;
-    color: var(--accent);
-    white-space: nowrap;
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand .mark { width: 44px; height: 44px; flex: 0 0 auto; display: block; }
+
+  /* Ícones SVG (sprite no início do <body>): herdam cor e tamanho do texto. */
+  .ic {
+    width: 1em; height: 1em; flex: 0 0 auto; display: block;
+    fill: none; stroke: currentColor; stroke-width: 2;
+    stroke-linecap: round; stroke-linejoin: round;
   }
+  .ic.solid { fill: currentColor; stroke: none; }
   .brand .title {
     font-family: "Barlow Condensed", sans-serif;
     font-weight: 600;
@@ -142,47 +143,97 @@
     border: 1px solid var(--border);
     border-radius: 20px;
     white-space: nowrap;
+    background: transparent;
+    transition: color 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
   }
   .status .dot {
     width: 7px; height: 7px; border-radius: 50%;
     background: var(--ok);
     box-shadow: 0 0 0 0 rgba(73,195,138,0.6);
     animation: pulse 2.2s infinite;
+    transition: background-color 0.3s ease, transform 0.3s ease;
   }
-  .status.busy .dot { background: var(--warn); animation: pulse 0.9s infinite; }
+  .status.busy { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+  .status.busy .dot { background: var(--warn); animation: pulseWarn 0.9s infinite; transform: scale(1.15); }
+  /* Salvo / Não salvo: estado de repouso depois de gerar nesta conversa. */
+  .status.saved { color: var(--ok); border-color: var(--ok); background: var(--ok-bg); }
+  .status.saved .dot { animation: none; }
+  .status.unsaved { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+  .status.unsaved .dot { background: var(--warn); animation: none; }
+  /* Troca de texto: o novo estado entra deslizando de baixo. */
+  .status .statusText { display: inline-block; }
+  .status .statusText.swap { animation: statusIn 0.28s ease; }
+  @keyframes statusIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulseWarn {
+    0% { box-shadow: 0 0 0 0 rgba(232,163,61,0.55); }
+    70% { box-shadow: 0 0 0 6px rgba(232,163,61,0); }
+    100% { box-shadow: 0 0 0 0 rgba(232,163,61,0); }
+  }
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(73,195,138,0.5); }
     70% { box-shadow: 0 0 0 6px rgba(73,195,138,0); }
     100% { box-shadow: 0 0 0 0 rgba(73,195,138,0); }
   }
 
-  .composerStatusBar {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-  .statusBig {
-    font-size: 15px;
-    padding: 10px 16px;
-    border-width: 1.5px;
-  }
-  .statusBig .dot { width: 10px; height: 10px; }
-  .bigResetBtn {
+  /* Switch "CBU deliberou destaque" (na linha dos chips) */
+  .cbuToggle {
     display: flex; align-items: center; gap: 8px;
-    border: 1.5px solid var(--accent);
-    background: var(--panel);
-    color: var(--accent);
-    height: 44px;
-    padding: 0 20px;
-    border-radius: 22px;
+    height: 28px;
+    padding: 0 4px 0 2px;
+    color: var(--text-2);
     cursor: pointer;
     font-family: "Barlow Condensed", sans-serif;
-    font-weight: 700;
-    font-size: 16px;
-    letter-spacing: 0.02em;
+    font-weight: 700; font-size: 13.5px; letter-spacing: 0.03em;
+    user-select: none; white-space: nowrap;
   }
-  .bigResetBtn:hover { background: var(--accent); color: var(--accent-ink); }
-  .bigResetBtn .hbIcon { font-size: 21px; line-height: 1; }
+  .cbuToggle input {
+    -webkit-appearance: none; appearance: none;
+    position: relative; flex: 0 0 auto;
+    width: 34px; height: 20px; margin: 0;
+    border-radius: 10px;
+    background: var(--border);
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .cbuToggle input::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    transition: transform 0.15s ease;
+  }
+  .cbuToggle input:checked { background: var(--accent); }
+  .cbuToggle input:checked::after { transform: translateX(14px); }
+  .cbuToggle input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .cbuToggle.on { color: var(--accent); }
+  .cbuToggle.disabled { opacity: 0.5; cursor: default; }
+  .cbuToggle.disabled input { cursor: default; }
+
+  /* Faixa inferior do main: Nova ocorrência (esq.) + status (dir.), fora da rolagem */
+  .mainDock {
+    flex: 0 0 auto;
+    width: 100%; max-width: 792px; margin: 0 auto;
+    padding: 6px 16px 8px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .dockReset {
+    display: flex; align-items: center; gap: 6px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    height: 30px;
+    padding: 0 13px;
+    border-radius: 16px;
+    cursor: pointer;
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700; font-size: 13.5px; letter-spacing: 0.03em;
+  }
+  .dockReset[hidden] { display: none; }
+  .dockReset:hover { background: var(--accent); color: var(--accent-ink); }
+  .dockReset .ic { font-size: 15px; }
+  .mainDock .status { margin-left: auto; }
 
   .headerBtn {
     display: flex; align-items: center; gap: 6px;
@@ -197,7 +248,7 @@
     font-family: "Barlow Condensed", sans-serif;
   }
   .headerBtn:hover { border-color: var(--accent); color: var(--accent); background: var(--panel); }
-  .headerBtn .hbIcon { font-size: 16px; line-height: 1; }
+  .headerBtn .ic { font-size: 16px; }
   .headerBtn .hbLabel {
     font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em;
     white-space: nowrap;
@@ -205,6 +256,7 @@
   @media (max-width: 620px) {
     .headerBtn { padding: 0; width: 36px; justify-content: center; }
     .headerBtn .hbLabel { display: none; }
+    .brand .mark { width: 36px; height: 36px; }
   }
 
   /* ---------- Criteria drawer ---------- */
@@ -232,6 +284,101 @@
     padding: 9px 0; border-bottom: 1px solid var(--border);
   }
   #criteriaPanel li b { color: var(--text); font-family: "IBM Plex Mono", monospace; font-weight: 600; margin-right: 6px; }
+  /* ---------- Histórico (modal) ---------- */
+  #historyModal {
+    position: fixed;
+    left: 50%; top: 50%;
+    width: min(820px, calc(100vw - 32px));
+    max-height: calc(100dvh - 64px);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: flex; flex-direction: column;
+    transform: translate(-50%, -47%);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 30;
+  }
+  #historyModal.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%); }
+  .hmHead {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hmHead h2 {
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 19px; font-weight: 700; margin: 0 0 2px;
+  }
+  .hmHead .sub { font-size: 12px; color: var(--text-3); }
+  .hmClose {
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--text-2);
+    width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 15px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .hmClose:hover { border-color: var(--accent); color: var(--accent); }
+  .hmBody { overflow-y: auto; }
+  .histMsg { padding: 28px 18px; text-align: center; color: var(--text-2); font-size: 14px; }
+  table.hist { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.hist th {
+    position: sticky; top: 0;
+    background: var(--panel-2);
+    text-align: left;
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+    color: var(--text-3);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.hist td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text); }
+  table.hist tr.row { cursor: pointer; }
+  table.hist tr.row:hover td { background: var(--panel-2); }
+  table.hist .small { display: block; font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  table.hist .nowrap { white-space: nowrap; }
+  .kind {
+    display: inline-block;
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em;
+    padding: 3px 8px; border-radius: 5px; white-space: nowrap;
+  }
+  .kind.relevancia { background: var(--panel-2); color: var(--text-2); border: 1px solid var(--border); }
+  .kind.destaque { background: var(--accent); color: var(--accent-ink); }
+  .openBtn {
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em;
+    border: 1px solid var(--accent); color: var(--accent); background: transparent;
+    border-radius: 16px; padding: 5px 12px; cursor: pointer; white-space: nowrap;
+  }
+  .openBtn:hover { background: var(--accent); color: var(--accent-ink); }
+  /* ---------- Confirmação (no lugar do confirm() nativo, que o navegador pode bloquear) ---------- */
+  #confirmBox {
+    position: fixed; inset: 0;
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 40;
+  }
+  #confirmBox.open { display: flex; }
+  .cbCard {
+    width: min(420px, 100%);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .cbCard p { margin: 0 0 16px; font-size: 15px; line-height: 1.45; color: var(--text); }
+  .cbActions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+  .cbActions button {
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 14px; font-weight: 700; letter-spacing: 0.04em;
+    border-radius: 18px; padding: 7px 16px; cursor: pointer;
+  }
+  #confirmNo { border: 1px solid var(--border); background: var(--panel-2); color: var(--text-2); }
+  #confirmYes { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); }
+  @media (max-width: 560px) {
+    table.hist .colUpd { display: none; }
+    table.hist td, table.hist th { padding-left: 8px; padding-right: 8px; }
+  }
+
   #scrim {
     position: fixed; inset: 0; background: rgba(0,0,0,0.35);
     opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 25;
@@ -280,13 +427,19 @@
   /* ---------- Conversation ---------- */
   main {
     flex: 1 1 auto;
+    min-height: 0;
+    display: flex; flex-direction: column;
+  }
+  #scroller {
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     padding: 22px 16px 12px;
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar) transparent;
   }
-  main::-webkit-scrollbar { width: 8px; }
-  main::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 8px; }
+  #scroller::-webkit-scrollbar { width: 8px; }
+  #scroller::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 8px; }
 
   .feed { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 
@@ -294,7 +447,7 @@
     max-width: 660px; margin: 7vh auto; text-align: center;
     color: var(--text-2);
   }
-  .empty .glyph { font-size: 34px; margin-bottom: 10px; }
+  .empty .glyph { font-size: 40px; margin-bottom: 10px; color: var(--accent); display: flex; justify-content: center; }
   .empty h1 {
     font-family: "Barlow Condensed", sans-serif;
     font-size: 36px; font-weight: 700; color: var(--text); margin: 0 0 12px;
@@ -336,20 +489,60 @@
   .msg.assistant .bubble .think {
     font-family: "Barlow", sans-serif;
     font-style: italic;
-    color: var(--text-3);
+    font-weight: 600;
+    color: var(--warn);
+  }
+  .think .dots i { font-style: inherit; animation: dotBlink 1.2s infinite; opacity: 0.15; }
+  .think .dots i:nth-child(2) { animation-delay: 0.2s; }
+  .think .dots i:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotBlink {
+    0%, 20% { opacity: 0.15; }
+    40%, 60% { opacity: 1; }
+    100% { opacity: 0.15; }
   }
 
   .assistantWrap { max-width: 88%; width: 100%; }
-  .msgTools {
-    display: flex; gap: 8px; margin-top: 6px; padding-left: 2px;
+  .msg.assistant .assistantWrap .bubble { position: relative; padding-right: 46px; max-width: none; }
+  .copyBtn {
+    position: absolute; top: 7px; right: 7px;
+    width: 30px; height: 30px; padding: 0; border-radius: 8px;
+    border: 1px solid transparent; background: transparent; color: var(--text-3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; cursor: pointer;
   }
-  .msgTools button {
+  .copyBtn:hover { background: var(--panel-2); border-color: var(--accent); color: var(--accent); }
+  .copyBtn.done { color: var(--accent); }
+  .bubble:not([data-raw]) .copyBtn { display: none; }
+
+  /* Enquadramento e pendências: apoio ao despachante, fora do Copiar. */
+  .auxPanel {
+    position: relative;
+    margin-top: 8px; padding: 9px 46px 10px 12px;
+    border: 1px dashed var(--border); border-radius: 10px;
+    color: var(--text-2); font-size: 13px; line-height: 1.55;
+    white-space: pre-wrap; word-wrap: break-word;
+  }
+  .auxPanel .auxHead {
+    display: block; margin-bottom: 4px;
     font-family: "Barlow Condensed", sans-serif;
-    font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em;
-    color: var(--text-3);
-    background: none; border: none; cursor: pointer; padding: 2px 4px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent);
   }
-  .msgTools button:hover { color: var(--accent); }
+  .auxPanel .copyBtn { top: 4px; right: 4px; }
+  .auxPanel .auxIc {
+    display: inline-block; vertical-align: -2px; margin-right: 5px;
+    font-size: 14px; color: var(--warn);
+  }
+
+  .msgTools { display: flex; gap: 8px; margin-top: 6px; padding-left: 2px; }
+  .msgTools:empty { display: none; }
+  .msgTools .msgNote { font-size: 11.5px; color: var(--warn); padding: 2px 4px; }
+
+  /* Marca onde começam as atualizações feitas nesta conversa. */
+  .sessionMark { display: flex; align-items: center; gap: 10px; }
+  .sessionMark::before, .sessionMark::after {
+    content: ""; flex: 1; height: 1px; background: var(--border);
+  }
+  .sessionMark .tag { margin-bottom: 0; }
 
   .tag {
     display: inline-block;
@@ -403,7 +596,12 @@
   }
   .postGenToast b { font-weight: 700; }
 
-  .chips { display: flex; gap: 7px; margin-bottom: 9px; flex-wrap: wrap; }
+  .composerRow {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px 12px; flex-wrap: wrap;
+    margin-bottom: 9px;
+  }
+  .chips { display: flex; gap: 7px; flex-wrap: wrap; }
   .chip {
     font-family: "Barlow Condensed", sans-serif;
     font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
@@ -416,13 +614,26 @@
   .chip.active { border-color: var(--accent); color: var(--accent); background: transparent; }
 
   .composer {
-    display: flex; align-items: flex-end; gap: 8px;
+    position: relative;
+    display: flex; align-items: center; gap: 8px;
     border: 1px solid var(--border);
     background: var(--panel-2);
     border-radius: 14px;
-    padding: 8px 8px 8px 8px;
+    padding: 10px 8px;
   }
   .composer:focus-within { border-color: var(--accent); }
+  /* Alça para redimensionar o campo de texto: arrastar pra cima aumenta. */
+  .composerGrip {
+    position: absolute; top: 0; left: 50%;
+    width: 64px; height: 12px; margin-left: -32px;
+    cursor: ns-resize; touch-action: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .composerGrip::before {
+    content: ""; width: 36px; height: 4px; border-radius: 2px;
+    background: var(--border);
+  }
+  .composerGrip:hover::before, .composerGrip.dragging::before { background: var(--accent); }
 
   .composerIconBtn {
     flex: 0 0 auto;
@@ -431,7 +642,8 @@
     color: var(--text-2);
     border-radius: 12px;
     cursor: pointer;
-    font-size: 21px;
+    font-size: 22px;
+    padding: 0;
     display: flex; align-items: center; justify-content: center;
   }
   .composerIconBtn:hover { background: var(--panel); border-color: var(--accent); color: var(--accent); }
@@ -470,7 +682,7 @@
     width: 26px; height: 26px; border-radius: 5px;
     background: var(--panel); border: 1px solid var(--border);
     display: flex; align-items: center; justify-content: center;
-    font-size: 13px; flex: 0 0 auto;
+    font-size: 15px; flex: 0 0 auto; color: var(--text-2);
   }
   .attachChip .attachName {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -478,9 +690,27 @@
   .attachChip button {
     flex: 0 0 auto; border: none; background: none; color: var(--text-3);
     cursor: pointer; font-size: 13px; padding: 0 2px;
+    display: flex; align-items: center;
   }
   .attachChip button:hover { color: var(--accent); }
   .attachChip.processing .attachName { color: var(--text-3); font-style: italic; }
+  /* Barra de carregamento do anexo: determinada no OCR (pág. n/total),
+     indeterminada no resto. */
+  .attachBar {
+    flex: 0 0 auto; position: relative; overflow: hidden;
+    width: 46px; height: 4px; border-radius: 2px;
+    background: var(--border);
+  }
+  .attachBar > span {
+    position: absolute; top: 0; bottom: 0; left: 0;
+    border-radius: 2px; background: var(--warn);
+    transition: width 0.3s ease;
+  }
+  .attachBar.indet > span { width: 40%; animation: attachIndet 1.1s ease-in-out infinite; }
+  @keyframes attachIndet {
+    from { left: -40%; }
+    to { left: 100%; }
+  }
 
   #input {
     flex: 1;
@@ -491,8 +721,7 @@
     font-family: "Barlow", sans-serif;
     font-size: 14.5px;
     line-height: 1.5;
-    max-height: 160px;
-    min-height: 22px;
+    min-height: 66px;
     padding: 6px 0;
     outline: none;
   }
@@ -507,10 +736,34 @@
     border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
-    font-size: 19px;
+    font-size: 21px;
+    padding: 0;
   }
   #sendBtn:disabled { opacity: 0.4; cursor: default; }
   #sendBtn.stop { background: var(--warn); }
+
+  /* Overlay de arrastar e soltar arquivos */
+  #dropZone {
+    position: fixed; inset: 0; z-index: 50;
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+  }
+  #dropZone.open { display: flex; }
+  #dropZone .dzCard {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    width: min(460px, 100%);
+    padding: 36px 20px;
+    border: 2.5px dashed var(--accent);
+    border-radius: 18px;
+    background: var(--panel);
+    color: var(--text);
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 22px; font-weight: 700; text-align: center;
+  }
+  #dropZone .dzCard .ic { font-size: 40px; color: var(--accent); }
+  #dropZone .dzCard small { font-family: "Barlow", sans-serif; font-size: 13px; font-weight: 400; color: var(--text-2); }
 
   .foot-note {
     text-align: center; font-size: 11px; color: var(--text-3);
@@ -526,23 +779,46 @@
 </head>
 <body>
 
+<!-- Ícones (sprite): <svg class="ic"><use href="#i-…"/></svg> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+  <symbol id="i-criteria" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+  <symbol id="i-new" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a2.12 2.12 0 1 1 3 3L12 15l-4 1 1-4Z"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="8.5" y="2" width="7" height="12.5" rx="3.5" fill="currentColor" stroke="none"/><path d="M5 11.5a7 7 0 0 0 14 0M12 18.5V22"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M3.4 20.4 21 12 3.4 3.6v6.5L15 12 3.4 13.9z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16a2 2 0 0 1-1-1.7V5a2 2 0 0 1 2-2h9.3A2 2 0 0 1 16 4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2.5 2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="currentColor"/></symbol>
+  <symbol id="i-flame"viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+</svg>
+
 <header>
   <div class="brand">
-    <span class="mark">CBMMG · COBOM</span>
+    <img class="mark" src="assets/logo_cobom-128.png" alt="COBOM — Centro de Operações do Corpo de Bombeiros" width="44" height="44">
     <div>
-      <span class="title">Anúncio de Ocorrência de Destaque</span>
+      <span class="title">Anúncio de Ocorrência</span>
       <span class="ref">Memorando nº 3.200 — 17/08/2026 (SEI 1400.01.0050313/2026-06)</span>
     </div>
   </div>
   <div class="headerRight">
+    <button class="headerBtn" id="historyBtn" title="Anúncios das últimas 48h, para atualizar ou retificar">
+      <svg class="ic"><use href="#i-history"/></svg><span class="hbLabel">Histórico</span>
+    </button>
     <button class="headerBtn" id="criteriaBtn" title="Ver critérios do Memorando 3.200">
-      <span class="hbIcon">§</span><span class="hbLabel">Critérios</span>
+      <svg class="ic"><use href="#i-criteria"/></svg><span class="hbLabel">Critérios</span>
     </button>
     <button class="headerBtn" id="creditsBtn" title="Sobre o sistema">
-      <span class="hbIcon">♥</span><span class="hbLabel">Sobre</span>
+      <svg class="ic"><use href="#i-heart"/></svg><span class="hbLabel">Sobre</span>
     </button>
     <button class="headerBtn" id="resetBtn" title="Nova ocorrência">
-      <span class="hbIcon">↺</span><span class="hbLabel">Novo</span>
+      <svg class="ic"><use href="#i-new"/></svg><span class="hbLabel">Novo</span>
     </button>
   </div>
 </header>
@@ -553,6 +829,27 @@
   <div class="sub">Item 3 do Memorando nº 3.200 (17/08/2026)</div>
   <ol id="criteriaList"></ol>
 </aside>
+
+<section id="historyModal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+  <div class="hmHead">
+    <div>
+      <h2 id="historyTitle">Histórico de anúncios</h2>
+      <div class="sub">Ficam disponíveis por 48h a partir da data do fato. Abra um anúncio para atualizar, retificar ou registrar a deliberação do CBU.</div>
+    </div>
+    <button class="hmClose" id="historyClose" type="button" title="Fechar"><svg class="ic"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="hmBody" id="historyBody"></div>
+</section>
+
+<div id="confirmBox" role="alertdialog" aria-modal="true" aria-labelledby="confirmMsg">
+  <div class="cbCard">
+    <p id="confirmMsg"></p>
+    <div class="cbActions">
+      <button type="button" id="confirmNo">Cancelar</button>
+      <button type="button" id="confirmYes">Confirmar</button>
+    </div>
+  </div>
+</div>
 
 <aside id="creditsPanel">
   <div class="creditsCard">
@@ -565,38 +862,54 @@
 </aside>
 
 <main id="main">
+ <div id="scroller">
   <div class="feed" id="feed">
     <div class="empty" id="emptyState">
-      <div class="glyph">🚒</div>
+      <div class="glyph"><svg class="ic"><use href="#i-flame"/></svg></div>
       <h1>Descreva a ocorrência</h1>
       <p>Cole ou digite as informações que a guarnição repassou — local, vítimas, viaturas, situação. A ferramenta identifica o enquadramento no Memorando nº 3.200 e monta o anúncio no modelo padrão.</p>
-      <p>Para atualizar ou retificar um anúncio já enviado nesta conversa, use os atalhos abaixo do campo de texto.</p>
+      <p>O anúncio sai como <b>Relevância</b>. Depois que o CBU deliberar, marque <b>CBU deliberou destaque</b> para trocar o título. Para atualizar ou retificar um anúncio das últimas 48h, abra-o pelo <b>Histórico</b>.</p>
       <div class="hint">Ferramenta de apoio — revise sempre antes de enviar pelo canal oficial do COBOM.</div>
     </div>
   </div>
+ </div>
+  <div class="mainDock">
+    <button class="dockReset" id="resetBtnBig" type="button" hidden>
+      <svg class="ic"><use href="#i-new"/></svg> Nova ocorrência
+    </button>
+    <div class="status" id="statusPill"><span class="dot"></span><span class="statusText" id="statusText">PRONTO</span></div>
+  </div>
 </main>
+
+<div id="dropZone" aria-hidden="true">
+  <div class="dzCard">
+    <svg class="ic"><use href="#i-clip"/></svg>
+    Solte para anexar
+    <small>Foto (JPEG, PNG, WebP, GIF) ou PDF</small>
+  </div>
+</div>
 
 <footer>
   <div class="composerWrap">
-    <div class="composerStatusBar">
-      <button class="bigResetBtn" id="resetBtnBig" type="button">
-        <span class="hbIcon">↺</span> Nova ocorrência
-      </button>
-      <div class="status statusBig" id="statusPill"><span class="dot"></span><span id="statusText">PRONTO</span></div>
-    </div>
-    <div class="postGenToast" id="postGenToast">Anúncio pronto. Pra outra ocorrência, clique em <b>↺ Novo</b> primeiro.</div>
-    <div class="chips">
-      <button class="chip active" data-tipo="Novo anúncio">Novo anúncio</button>
-      <button class="chip" data-tipo="Atualização">Atualização</button>
-      <button class="chip" data-tipo="Retificação">Retificação</button>
+    <div class="postGenToast" id="postGenToast">Anúncio pronto. Pra outra ocorrência, clique em <b>Nova ocorrência</b> primeiro.</div>
+    <div class="composerRow">
+      <div class="chips">
+        <button class="chip active" data-tipo="Novo anúncio">Novo anúncio</button>
+        <button class="chip" data-tipo="Atualização">Atualização</button>
+        <button class="chip" data-tipo="Retificação">Retificação</button>
+      </div>
+      <label class="cbuToggle" id="cbuLabel" title="Marque depois que o CBU deliberar que a ocorrência é Destaque: o título do anúncio muda para OCORRÊNCIA DE DESTAQUE.">
+        <input type="checkbox" id="cbuToggle" role="switch"> CBU deliberou destaque
+      </label>
     </div>
     <div class="attachStrip" id="attachStrip"></div>
     <div class="composer">
-      <button id="attachBtn" class="composerIconBtn" title="Anexar foto ou PDF" type="button">📎</button>
-      <button id="micBtn" class="composerIconBtn" title="Ditar por voz" type="button">🎤</button>
+      <div class="composerGrip" id="composerGrip" title="Arraste para redimensionar (duplo clique volta ao padrão)"></div>
+      <button id="attachBtn" class="composerIconBtn" title="Anexar foto ou PDF (também dá pra colar um print ou arrastar o arquivo)" type="button"><svg class="ic"><use href="#i-clip"/></svg></button>
+      <button id="micBtn" class="composerIconBtn" title="Ditar por voz" type="button"><svg class="ic"><use href="#i-mic"/></svg></button>
       <input type="file" id="fileInput" accept="image/*,application/pdf" multiple hidden>
-      <textarea id="input" rows="1" placeholder="Ex.: Incêndio em galpão na Av. Amazonas, BH. Vítima com queimaduras conduzida ao PS. 3 viaturas, 9 militares. Ainda em atendimento."></textarea>
-      <button id="sendBtn" title="Enviar">➤</button>
+      <textarea id="input" rows="3" placeholder="Ex.: Incêndio em galpão na Av. Amazonas, BH. Vítima com queimaduras conduzida ao PS. 3 viaturas, 9 militares. Ainda em atendimento."></textarea>
+      <button id="sendBtn" title="Enviar"><svg class="ic"><use href="#i-send"/></svg></button>
     </div>
     <div class="foot-note">O texto gerado é um rascunho — confira dados, enquadramento e pendências antes de anunciar oficialmente.</div>
   </div>
@@ -632,7 +945,9 @@
 
   var els = {
     feed: document.getElementById("feed"),
-    main: document.getElementById("main"),
+    scroller: document.getElementById("scroller"),
+    composerGrip: document.getElementById("composerGrip"),
+    dropZone: document.getElementById("dropZone"),
     empty: document.getElementById("emptyState"),
     input: document.getElementById("input"),
     sendBtn: document.getElementById("sendBtn"),
@@ -652,7 +967,17 @@
     micBtn: document.getElementById("micBtn"),
     fileInput: document.getElementById("fileInput"),
     attachStrip: document.getElementById("attachStrip"),
-    postGenToast: document.getElementById("postGenToast")
+    postGenToast: document.getElementById("postGenToast"),
+    historyBtn: document.getElementById("historyBtn"),
+    historyModal: document.getElementById("historyModal"),
+    historyBody: document.getElementById("historyBody"),
+    historyClose: document.getElementById("historyClose"),
+    cbuToggle: document.getElementById("cbuToggle"),
+    cbuLabel: document.getElementById("cbuLabel"),
+    confirmBox: document.getElementById("confirmBox"),
+    confirmMsg: document.getElementById("confirmMsg"),
+    confirmYes: document.getElementById("confirmYes"),
+    confirmNo: document.getElementById("confirmNo")
   };
 
   CRITERIA.forEach(function (c) {
@@ -665,17 +990,52 @@
   var busy = false;
   var currentTipo = "Novo anúncio";
   var abortCtl = null;
+  var currentAnuncioId = null; // registro no histórico (tabela anuncios) desta conversa
+  var destaqueCbu = false;     // o CBU deliberou destaque para esta ocorrência?
+  // Último anúncio gerado nesta conversa ficou no histórico? null = nada
+  // gerado ainda (feed vazio ou só o anúncio aberto do histórico).
+  var salvo = null;
 
-  function setStatus(text, isBusy) {
+  // kind: "busy" | "saved" | "unsaved" | vazio (pronto)
+  function setStatus(text, kind) {
+    ["busy", "saved", "unsaved"].forEach(function (c) {
+      els.statusPill.classList.toggle(c, kind === c);
+    });
+    if (els.statusText.textContent === text) return;
     els.statusText.textContent = text;
-    els.statusPill.classList.toggle("busy", !!isBusy);
+    // reinicia a animação de entrada do texto
+    els.statusText.classList.remove("swap");
+    void els.statusText.offsetWidth;
+    els.statusText.classList.add("swap");
+  }
+
+  function setSalvo(v) {
+    salvo = v;
+    statusRepouso();
+  }
+
+  function statusRepouso() {
+    if (salvo === true) setStatus("SALVO", "saved");
+    else if (salvo === false) setStatus("NÃO SALVO", "unsaved");
+    else setStatus("PRONTO");
   }
 
   function scrollToBottom() {
     requestAnimationFrame(function () {
-      els.main.scrollTop = els.main.scrollHeight;
+      els.scroller.scrollTop = els.scroller.scrollHeight;
     });
   }
+
+  // SVG do sprite (ver <symbol id="i-…"> no início do <body>).
+  function icon(id) {
+    return '<svg class="ic"><use href="#i-' + id + '"/></svg>';
+  }
+
+  // "Nova ocorrência" (faixa inferior do main) só aparece com algo no feed.
+  function updateDockReset() {
+    els.resetBtnBig.hidden = !els.feed.querySelector(".msg");
+  }
+  new MutationObserver(updateDockReset).observe(els.feed, { childList: true });
 
   function escapeHtml(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -684,14 +1044,114 @@
   // Renders Telegram-style *bold* markers as <b> for preview, without
   // touching the raw text kept for copying (that stays with the asterisks
   // Telegram itself needs).
+  function telegramHtml(text) {
+    return escapeHtml(text).replace(/\*([^\n*]+)\*/g, "<b>$1</b>");
+  }
+
+  // ENQUADRAMENTO (sempre o último campo) e PENDÊNCIAS DE PREENCHIMENTO são
+  // apoio ao despachante: ficam na tela, mas fora do texto copiado. O texto
+  // completo continua em `turns` para o modelo ter o contexto nas atualizações.
+  var APOIO_RE = /^[ \t]*\*{0,2}[ \t]*(?:ENQUADRAMENTO|PEND[ÊE]NCIAS DE PREENCHIMENTO)\b/im;
+  function splitApoio(text) {
+    var m = APOIO_RE.exec(text);
+    if (!m) return { anuncio: text, apoio: "" };
+    return {
+      anuncio: text.slice(0, m.index).replace(/\s+$/, ""),
+      apoio: text.slice(m.index).trim()
+    };
+  }
+
+  // Botão Copiar (ícone no canto superior direito). Copia o data-raw de `holder`.
+  function makeCopyBtn(holder, label) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "copyBtn";
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
+    btn.innerHTML = icon("copy");
+    btn.onclick = function () {
+      var text = holder.getAttribute("data-raw") || "";
+      navigator.clipboard.writeText(text).then(function () {
+        btn.innerHTML = icon("check");
+        btn.classList.add("done");
+        btn.title = "Copiado";
+        setTimeout(function () {
+          btn.innerHTML = icon("copy");
+          btn.classList.remove("done");
+          btn.title = label;
+        }, 1500);
+      });
+    };
+    return btn;
+  }
+
+  var ENQ_RE = /^[ \t]*\*{0,2}[ \t]*ENQUADRAMENTO\b/i;
+  var PEND_RE = /^[ \t]*\*{0,2}[ \t]*PEND[ÊE]NCIAS DE PREENCHIMENTO\b/i;
+  // Critério confirmado ("Item 3.x" / "Itens 3.x e 3.y"); "A confirmar" e
+  // "Nenhum critério" não ganham a estrela.
+  var ENQ_DESTAQUE_RE = /ENQUADRAMENTO:?\*?:?\s*Ite(?:m|ns)\s+3\.\d/i;
+
+  // Enquadramento sozinho (sem as pendências), para mandar ao CBU.
+  function extrairEnquadramento(apoio) {
+    var lines = apoio.split("\n"), out = [], dentro = false;
+    for (var i = 0; i < lines.length; i++) {
+      if (ENQ_RE.test(lines[i])) dentro = true;
+      else if (PEND_RE.test(lines[i])) dentro = false;
+      if (dentro) out.push(lines[i]);
+    }
+    return out.join("\n").trim();
+  }
+
+  function apoioHtml(apoio) {
+    return apoio.split("\n").map(function (line) {
+      var html = telegramHtml(line);
+      if (PEND_RE.test(line)) {
+        return '<span class="auxIc" title="Campos a preencher">' + icon("alert") + '</span>' + html;
+      }
+      if (ENQ_RE.test(line) && ENQ_DESTAQUE_RE.test(line)) {
+        return '<span class="auxIc" title="Há critério de destaque">' + icon("star") + '</span>' + html;
+      }
+      return html;
+    }).join("\n");
+  }
+
   function renderTelegramPreview(bubble, rawText) {
-    bubble.setAttribute("data-raw", rawText);
-    var html = escapeHtml(rawText).replace(/\*([^\n*]+)\*/g, "<b>$1</b>");
-    bubble.innerHTML = html;
+    var parts = splitApoio(rawText);
+    bubble.setAttribute("data-raw", parts.anuncio);
+    (bubble.querySelector(".bubbleBody") || bubble).innerHTML = telegramHtml(parts.anuncio);
+
+    var wrap = bubble.parentElement;
+    var old = wrap.querySelector(".auxPanel");
+    if (old) old.remove();
+    if (parts.apoio) {
+      var aux = document.createElement("div");
+      aux.className = "auxPanel";
+      aux.innerHTML = '<span class="auxHead">APOIO AO DESPACHANTE</span>' + apoioHtml(parts.apoio);
+      var enq = extrairEnquadramento(parts.apoio);
+      if (enq) {
+        aux.setAttribute("data-raw", enq);
+        aux.appendChild(makeCopyBtn(aux, "Copiar enquadramento (para o CBU)"));
+      }
+      wrap.insertBefore(aux, bubble.nextSibling);
+    }
+  }
+
+  // Depois de abrir um anúncio do histórico, a primeira ação da conversa
+  // (envio ou deliberação do CBU) ganha um divisor marcando onde começam
+  // as atualizações feitas agora.
+  var marcarInicioConversa = false;
+  function marcarInicio() {
+    if (!marcarInicioConversa) return;
+    marcarInicioConversa = false;
+    var mark = document.createElement("div");
+    mark.className = "sessionMark";
+    mark.innerHTML = '<span class="tag novo">ATUALIZAÇÕES DESTA CONVERSA</span>';
+    els.feed.appendChild(mark);
   }
 
   function addUserBubble(text) {
     els.empty.style.display = "none";
+    marcarInicio();
     var row = document.createElement("div");
     row.className = "msg user";
     var bubble = document.createElement("div");
@@ -709,21 +1169,17 @@
     wrap.className = "assistantWrap";
     var bubble = document.createElement("div");
     bubble.className = "bubble";
-    bubble.innerHTML = '<span class="think">Pensando…</span>';
+
+    bubble.appendChild(makeCopyBtn(bubble, "Copiar anúncio"));
+
+    var body = document.createElement("div");
+    body.className = "bubbleBody";
+    body.innerHTML = '<span class="think">Pensando<span class="dots"><i>.</i><i>.</i><i>.</i></span></span>';
+    bubble.appendChild(body);
     wrap.appendChild(bubble);
 
     var tools = document.createElement("div");
     tools.className = "msgTools";
-    var copyBtn = document.createElement("button");
-    copyBtn.textContent = "COPIAR";
-    copyBtn.onclick = function () {
-      var text = bubble.getAttribute("data-raw") || bubble.textContent;
-      navigator.clipboard.writeText(text).then(function () {
-        copyBtn.textContent = "COPIADO";
-        setTimeout(function () { copyBtn.textContent = "COPIAR"; }, 1500);
-      });
-    };
-    tools.appendChild(copyBtn);
     wrap.appendChild(tools);
 
     row.appendChild(wrap);
@@ -751,16 +1207,63 @@
       case "model_overloaded": return "A Groq está com alta demanda no momento (já tentamos de novo automaticamente). Aguarde um pouco e tente enviar de novo.";
       case "empty_completion": return "Não foi possível gerar uma resposta. Tente descrever a ocorrência com mais detalhes.";
       case "network_error": return "Não foi possível conectar à Edge Function. Confira a URL configurada e sua conexão.";
+      case "historico_indisponivel": return "Histórico indisponível no momento (banco de dados não configurado ou fora do ar). A geração de anúncios continua funcionando.";
+      case "not_found": return "Este anúncio não está mais no histórico (já passaram 48h da data do fato). Gere um novo anúncio.";
       case "cancelled": return "";
       default: return "Falha temporária ao gerar o anúncio. Tente novamente.";
     }
   }
 
+  // Altura do campo: cresce com o texto a partir de um mínimo (padrão ou o que
+  // o operador escolheu arrastando a alça), até metade da janela. O footer não
+  // tem altura fixa, então o feed encolhe/cresce junto.
+  var INPUT_MIN_H = 66;
+  var userMinH = null;
+  try { userMinH = parseInt(localStorage.getItem("cobom.inputH"), 10) || null; } catch (_e) { /* sem storage */ }
+
+  function inputMaxH() { return Math.round(window.innerHeight * 0.5); }
+
   function autoResize() {
+    var min = Math.min(userMinH || INPUT_MIN_H, inputMaxH());
     els.input.style.height = "auto";
-    els.input.style.height = Math.min(els.input.scrollHeight, 160) + "px";
+    els.input.style.height = Math.min(Math.max(els.input.scrollHeight, min), inputMaxH()) + "px";
   }
   els.input.addEventListener("input", autoResize);
+  window.addEventListener("resize", autoResize);
+
+  (function setupGrip() {
+    var startY = 0, startH = 0;
+    function onMove(e) {
+      var h = Math.round(startH + (startY - e.clientY)); // pra cima = maior
+      userMinH = Math.max(INPUT_MIN_H, Math.min(h, inputMaxH()));
+      autoResize();
+    }
+    function onUp(e) {
+      els.composerGrip.classList.remove("dragging");
+      els.composerGrip.removeEventListener("pointermove", onMove);
+      els.composerGrip.removeEventListener("pointerup", onUp);
+      els.composerGrip.removeEventListener("pointercancel", onUp);
+      try { els.composerGrip.releasePointerCapture(e.pointerId); } catch (_e) {}
+      try { localStorage.setItem("cobom.inputH", String(userMinH)); } catch (_e) {}
+      scrollToBottom();
+    }
+    els.composerGrip.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      startY = e.clientY;
+      startH = els.input.getBoundingClientRect().height;
+      els.composerGrip.classList.add("dragging");
+      try { els.composerGrip.setPointerCapture(e.pointerId); } catch (_e) {}
+      els.composerGrip.addEventListener("pointermove", onMove);
+      els.composerGrip.addEventListener("pointerup", onUp);
+      els.composerGrip.addEventListener("pointercancel", onUp);
+    });
+    els.composerGrip.addEventListener("dblclick", function () {
+      userMinH = null;
+      try { localStorage.removeItem("cobom.inputH"); } catch (_e) {}
+      autoResize();
+    });
+  })();
+  autoResize();
   els.input.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -768,11 +1271,15 @@
     }
   });
 
+  function selectChip(tipo) {
+    els.chips.forEach(function (c) {
+      c.classList.toggle("active", c.getAttribute("data-tipo") === tipo);
+    });
+    currentTipo = tipo;
+  }
   els.chips.forEach(function (chip) {
     chip.addEventListener("click", function () {
-      els.chips.forEach(function (c) { c.classList.remove("active"); });
-      chip.classList.add("active");
-      currentTipo = chip.getAttribute("data-tipo");
+      selectChip(chip.getAttribute("data-tipo"));
     });
   });
 
@@ -789,9 +1296,38 @@
   function closePanels() {
     els.criteriaPanel.classList.remove("open");
     els.creditsPanel.classList.remove("open");
+    els.historyModal.classList.remove("open");
     els.scrim.classList.remove("open");
   }
   els.scrim.addEventListener("click", closePanels);
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    if (confirmCb) fecharConfirmacao(false);
+    else closePanels();
+  });
+
+  // ---------- Confirmação ----------
+  // Substitui o confirm() nativo: alguns navegadores (e o próprio Chrome, depois
+  // de "impedir caixas de diálogo") devolvem false na hora sem mostrar nada.
+  var confirmCb = null;
+  function pedirConfirmacao(msg, rotuloOk, onOk) {
+    confirmCb = onOk;
+    els.confirmMsg.textContent = msg;
+    els.confirmYes.textContent = rotuloOk;
+    els.confirmBox.classList.add("open");
+    els.confirmYes.focus();
+  }
+  function fecharConfirmacao(ok) {
+    var cb = confirmCb;
+    confirmCb = null;
+    els.confirmBox.classList.remove("open");
+    if (ok && cb) cb();
+  }
+  els.confirmYes.addEventListener("click", function () { fecharConfirmacao(true); });
+  els.confirmNo.addEventListener("click", function () { fecharConfirmacao(false); });
+  els.confirmBox.addEventListener("click", function (e) {
+    if (e.target === els.confirmBox) fecharConfirmacao(false);
+  });
 
   // ---------- Faixa "anúncio pronto" ----------
   var postGenToastTimer = null;
@@ -805,17 +1341,281 @@
     els.postGenToast.classList.remove("show");
   }
 
-  function doReset() {
-    if (turns.length && !confirm("Iniciar uma nova ocorrência? A conversa atual será apagada.")) return;
+  function clearConversation() {
     turns = [];
     els.feed.innerHTML = "";
     els.feed.appendChild(els.empty);
     els.empty.style.display = "";
     clearAttachments();
     hidePostGenToast();
+    marcarInicioConversa = false;
+    currentAnuncioId = null;
+    setSalvo(null);
+    setDestaque(false);
+    selectChip("Novo anúncio");
+  }
+
+  function doReset() {
+    if (busy) return;
+    if (!turns.length) { clearConversation(); return; }
+    pedirConfirmacao("Iniciar uma nova ocorrência? A conversa atual será apagada da tela.",
+      "Nova ocorrência", clearConversation);
   }
   els.resetBtn.addEventListener("click", doReset);
   els.resetBtnBig.addEventListener("click", doReset);
+
+  async function callFunction(payload, signal) {
+    var res = await fetch(EDGE_FUNCTION_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: signal,
+      body: JSON.stringify(payload)
+    });
+    var data = null;
+    try { data = await res.json(); } catch (_e) { /* corpo vazio ou não-JSON */ }
+    return { ok: res.ok, data: data };
+  }
+
+  // Tag acima da bolha do anúncio (reusa .tag), ex.: "DO HISTÓRICO".
+  function addTagAbove(bubble, cls, label) {
+    var tag = document.createElement("span");
+    tag.className = "tag " + cls;
+    tag.textContent = label;
+    bubble.parentElement.insertBefore(tag, bubble);
+  }
+
+  // ---------- Histórico (48h a partir da data do fato) ----------
+  function fmtDataHora(iso) {
+    return new Date(iso).toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+    });
+  }
+
+  function fmtHaQuanto(iso) {
+    var min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (min < 1) return "agora";
+    if (min < 60) return "há " + min + " min";
+    return "há " + Math.floor(min / 60) + "h" + (min % 60 ? String(min % 60).padStart(2, "0") : "");
+  }
+
+  function fmtExpira(iso) {
+    var h = Math.max(0, (new Date(iso).getTime() - Date.now()) / 3600000);
+    return h < 1 ? "expira em menos de 1h" : "expira em " + Math.floor(h) + "h";
+  }
+
+  function campoAnuncio(texto, rotulo) {
+    var m = texto.match(new RegExp("^[ \\t]*\\*?" + rotulo + ":\\*?[ \\t]*([^\\n]*)", "im"));
+    return m ? m[1].trim().replace(/\.$/, "") : "";
+  }
+
+  function sufixoTitulo(texto) {
+    var m = texto.match(/OCORR[ÊE]NCIA DE (?:DESTAQUE|RELEV[ÂA]NCIA)[ \t]*\*{0,2}[ \t]*([^*\n]*)/);
+    return m ? m[1].replace(/^[—–-]\s*/, "").trim() : "";
+  }
+
+  function openHistory() {
+    closePanels();
+    els.historyModal.classList.add("open");
+    els.scrim.classList.add("open");
+    loadHistory();
+  }
+  els.historyBtn.addEventListener("click", openHistory);
+  els.historyClose.addEventListener("click", closePanels);
+
+  function historyMsg(text) {
+    els.historyBody.innerHTML = "";
+    var div = document.createElement("div");
+    div.className = "histMsg";
+    div.textContent = text;
+    els.historyBody.appendChild(div);
+  }
+
+  async function loadHistory() {
+    historyMsg("Carregando…");
+    var r;
+    try {
+      r = await callFunction({ action: "listar" });
+    } catch (_e) {
+      historyMsg(errorCopy("network_error"));
+      return;
+    }
+    if (!r.ok || !r.data || !Array.isArray(r.data.anuncios)) {
+      historyMsg(errorCopy((r.data && r.data.error) || "historico_indisponivel"));
+      return;
+    }
+    var lista = r.data.anuncios;
+    if (!lista.length) {
+      historyMsg("Nenhum anúncio nas últimas 48h.");
+      return;
+    }
+
+    var table = document.createElement("table");
+    table.className = "hist";
+    table.innerHTML = "<thead><tr><th>DATA DO FATO</th><th>LOCAL / SÍNTESE</th><th>TIPO</th>" +
+      "<th class=\"colUpd\">ATUALIZADO</th><th></th></tr></thead>";
+    var tbody = document.createElement("tbody");
+
+    lista.forEach(function (a) {
+      var tr = document.createElement("tr");
+      tr.className = "row";
+
+      var tdData = document.createElement("td");
+      tdData.className = "nowrap";
+      tdData.textContent = a.data_fato ? fmtDataHora(a.data_fato) : "não informada";
+      var exp = document.createElement("span");
+      exp.className = "small";
+      exp.textContent = fmtExpira(a.expira_em);
+      tdData.appendChild(exp);
+
+      var tdLocal = document.createElement("td");
+      tdLocal.textContent = campoAnuncio(a.texto, "LOCAL") || "—";
+      var sintese = campoAnuncio(a.texto, "SÍNTESE DO FATO");
+      if (sintese) {
+        var sm = document.createElement("span");
+        sm.className = "small";
+        sm.textContent = sintese.length > 90 ? sintese.slice(0, 90) + "…" : sintese;
+        tdLocal.appendChild(sm);
+      }
+
+      var tdTipo = document.createElement("td");
+      var kind = document.createElement("span");
+      kind.className = "kind " + (a.destaque_cbu ? "destaque" : "relevancia");
+      kind.textContent = a.destaque_cbu ? "DESTAQUE" : "RELEVÂNCIA";
+      tdTipo.appendChild(kind);
+      var suf = sufixoTitulo(a.texto);
+      if (suf) {
+        var ss = document.createElement("span");
+        ss.className = "small";
+        ss.textContent = suf;
+        tdTipo.appendChild(ss);
+      }
+
+      var tdUpd = document.createElement("td");
+      tdUpd.className = "colUpd nowrap";
+      tdUpd.textContent = fmtHaQuanto(a.updated_at);
+
+      var tdBtn = document.createElement("td");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "openBtn";
+      btn.textContent = "Abrir";
+      tdBtn.appendChild(btn);
+
+      tr.appendChild(tdData);
+      tr.appendChild(tdLocal);
+      tr.appendChild(tdTipo);
+      tr.appendChild(tdUpd);
+      tr.appendChild(tdBtn);
+      tr.addEventListener("click", function () { openFromHistory(a); });
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    els.historyBody.innerHTML = "";
+    els.historyBody.appendChild(table);
+  }
+
+  // Carrega o anúncio escolhido como "último anúncio" da conversa: o próximo
+  // envio (Atualização/Retificação) parte dele e sobrescreve o mesmo registro.
+  function openFromHistory(a) {
+    if (busy) return;
+    if (!turns.length) { carregarDoHistorico(a); return; }
+    pedirConfirmacao("Abrir este anúncio? A conversa atual será apagada da tela.", "Abrir anúncio",
+      function () { carregarDoHistorico(a); });
+  }
+
+  function carregarDoHistorico(a) {
+    if (busy) return;
+    clearConversation();
+    currentAnuncioId = a.id;
+    setDestaque(!!a.destaque_cbu);
+    turns = [
+      { role: "user", content: "(Anúncio recuperado do histórico — é o último anúncio desta ocorrência.)" },
+      { role: "assistant", content: a.texto }
+    ];
+    els.empty.style.display = "none";
+    var bubble = addAssistantBubble();
+    addTagAbove(bubble, "novo", "DO HISTÓRICO");
+    renderTelegramPreview(bubble, a.texto);
+    marcarInicioConversa = true;
+    selectChip("Atualização");
+    closePanels();
+    els.input.focus();
+  }
+
+  // ---------- Deliberação do CBU (Relevância ⇄ Destaque) ----------
+  function setDestaque(v) {
+    destaqueCbu = !!v;
+    els.cbuToggle.checked = destaqueCbu;
+    els.cbuLabel.classList.toggle("on", destaqueCbu);
+  }
+
+  function setCbuEnabled(enabled) {
+    els.cbuToggle.disabled = !enabled;
+    els.cbuLabel.classList.toggle("disabled", !enabled);
+  }
+
+  // Mesma troca de título da Edge Function, usada só quando o anúncio não
+  // ficou salvo no histórico (banco indisponível).
+  function trocarTituloLocal(texto, destaque) {
+    var titulo = "*OCORRÊNCIA DE " + (destaque ? "DESTAQUE" : "RELEVÂNCIA") + "*";
+    var re = /^[ \t]*\*{0,2}[ \t]*OCORR[ÊE]NCIA DE (?:DESTAQUE|RELEV[ÂA]NCIA)[ \t]*\*{0,2}[^*\n]*?[ \t]*\*{0,2}[ \t]*$/m;
+    return re.test(texto) ? texto.replace(re, titulo) : titulo + "\n" + texto;
+  }
+
+  function lastAssistantTurn() {
+    for (var i = turns.length - 1; i >= 0; i--) {
+      if (turns[i].role === "assistant") return turns[i];
+    }
+    return null;
+  }
+
+  function showDeliberacao(texto, destaque) {
+    marcarInicio();
+    var bubble = addAssistantBubble();
+    addTagAbove(bubble, destaque ? "retificacao" : "novo",
+      destaque ? "DESTAQUE — DELIBERADO PELO CBU" : "RELEVÂNCIA — DESTAQUE DESMARCADO");
+    renderTelegramPreview(bubble, texto);
+    lastAssistantTurn().content = texto;
+  }
+
+  els.cbuToggle.addEventListener("change", async function () {
+    var want = els.cbuToggle.checked;
+    if (busy) { setDestaque(!want); return; }
+
+    var ultimo = lastAssistantTurn();
+    if (!ultimo) { setDestaque(want); return; } // ainda sem anúncio: vale para a geração
+
+    if (!currentAnuncioId) {
+      setDestaque(want);
+      showDeliberacao(trocarTituloLocal(ultimo.content, want), want);
+      setSalvo(false);
+      return;
+    }
+
+    busy = true;
+    setCbuEnabled(false);
+    setStatus("ATUALIZANDO", "busy");
+    try {
+      var r = await callFunction({ action: "marcar_destaque", id: currentAnuncioId, destaque: want });
+      if (!r.ok || !r.data || !r.data.text) {
+        setDestaque(!want);
+        addErrorBubble(errorCopy((r.data && r.data.error) || "historico_indisponivel"));
+      } else {
+        setDestaque(want);
+        showDeliberacao(r.data.text, want);
+        salvo = true;
+      }
+    } catch (_e) {
+      setDestaque(!want);
+      addErrorBubble(errorCopy("network_error"));
+    } finally {
+      busy = false;
+      setCbuEnabled(true);
+      statusRepouso();
+    }
+  });
 
   // ---------- Anexos (imagem + PDF) ----------
   // Imagem vai direto pro modelo com visão da Groq (qwen/qwen3.8-27b, até
@@ -864,23 +1664,45 @@
         img.src = a.previewUrl;
         chip.appendChild(img);
       } else {
-        var icon = document.createElement("span");
-        icon.className = "attachIcon";
-        icon.textContent = a.kind === "pdf-text" ? "📄" : "🖼️";
-        chip.appendChild(icon);
+        var ico = document.createElement("span");
+        ico.className = "attachIcon";
+        ico.innerHTML = icon(a.kind === "pdf-text" ? "file" : "image");
+        chip.appendChild(ico);
       }
       var name = document.createElement("span");
       name.className = "attachName";
       name.textContent = a.processing ? (a.name + " — " + (a.progress || "lendo") + "…") : a.name;
       chip.appendChild(name);
+      if (a.processing) {
+        var bar = document.createElement("span");
+        var hasPct = typeof a.pct === "number";
+        bar.className = "attachBar" + (hasPct ? "" : " indet");
+        bar.setAttribute("role", "progressbar");
+        var fill = document.createElement("span");
+        if (hasPct) fill.style.width = Math.round(a.pct * 100) + "%";
+        bar.appendChild(fill);
+        chip.appendChild(bar);
+      }
       var rm = document.createElement("button");
       rm.type = "button";
-      rm.textContent = "✕";
+      rm.innerHTML = icon("x");
       rm.title = "Remover";
       rm.onclick = function () { removeAttachment(a.id); };
       chip.appendChild(rm);
       els.attachStrip.appendChild(chip);
     });
+    updateSendLock();
+  }
+
+  // Enquanto algum anexo carrega, o envio fica bloqueado (botão e Enter).
+  function anexoCarregando() {
+    return attachments.some(function (a) { return a.processing; });
+  }
+  function updateSendLock() {
+    if (busy) return; // durante a geração o botão é o "Parar"
+    var lock = anexoCarregando();
+    els.sendBtn.disabled = lock;
+    els.sendBtn.title = lock ? "Aguarde o anexo terminar de carregar" : "Enviar";
   }
 
   function removeAttachment(id) {
@@ -924,9 +1746,69 @@
   els.fileInput.addEventListener("change", async function () {
     var files = Array.prototype.slice.call(els.fileInput.files || []);
     els.fileInput.value = "";
+    await handleFiles(files);
+  });
+
+  async function handleFiles(files) {
     for (var i = 0; i < files.length; i++) {
       await handleFile(files[i]);
     }
+  }
+
+  // ---------- Colar da área de transferência (ex.: print com Win+Shift+S) ----------
+  // Só intercepta quando não há texto: Word/Excel mandam uma imagem junto do
+  // texto copiado, e aí o certo é colar o texto normalmente.
+  document.addEventListener("paste", function (e) {
+    if (confirmCb) return;
+    var cd = e.clipboardData;
+    if (!cd) return;
+    if ((cd.getData("text/plain") || "").trim()) return;
+    var files = [];
+    Array.prototype.forEach.call(cd.items || [], function (it) {
+      if (it.kind !== "file") return;
+      var f = it.getAsFile();
+      if (!f) return;
+      if (/^image\//.test(f.type) && (!f.name || f.name === "image.png")) {
+        var d = new Date();
+        var nome = "print-" + String(d.getHours()).padStart(2, "0") + "h" +
+          String(d.getMinutes()).padStart(2, "0") + (files.length ? "-" + (files.length + 1) : "") +
+          "." + (f.type.split("/")[1] || "png");
+        f = new File([f], nome, { type: f.type });
+      }
+      files.push(f);
+    });
+    if (!files.length) return;
+    e.preventDefault();
+    handleFiles(files);
+  });
+
+  // ---------- Arrastar e soltar ----------
+  var dragDepth = 0;
+  function dragHasFiles(e) {
+    return !!(e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") !== -1);
+  }
+  window.addEventListener("dragenter", function (e) {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();
+    dragDepth++;
+    els.dropZone.classList.add("open");
+  });
+  window.addEventListener("dragover", function (e) {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault(); // sem isso o navegador abre o arquivo e sai da página
+    e.dataTransfer.dropEffect = "copy";
+  });
+  window.addEventListener("dragleave", function (e) {
+    if (!dragHasFiles(e)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) els.dropZone.classList.remove("open");
+  });
+  window.addEventListener("drop", function (e) {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    els.dropZone.classList.remove("open");
+    handleFiles(Array.prototype.slice.call(e.dataTransfer.files || []));
   });
 
   async function handleFile(file) {
@@ -1016,6 +1898,7 @@
       var ocrParts = [];
       for (var r = 1; r <= maxPages; r++) {
         entry.progress = "OCR pág. " + r + "/" + maxPages;
+        entry.pct = (r - 1) / maxPages;
         renderAttachStrip();
         var pg = await pdf.getPage(r);
         var viewport = pg.getViewport({ scale: 2.5 }); // resolução maior = OCR mais preciso
@@ -1111,10 +1994,7 @@
   async function send() {
     if (busy) return;
     hidePostGenToast();
-    if (attachments.some(function (a) { return a.processing; })) {
-      addErrorBubble("Aguarde o carregamento do(s) anexo(s) antes de enviar.");
-      return;
-    }
+    if (anexoCarregando()) return; // botão já está bloqueado; Enter também não envia
     var raw = els.input.value.trim();
     var imageAttachments = attachments.filter(function (a) { return a.kind === "image" && a.base64; });
     var pdfTexts = attachments.filter(function (a) { return a.kind === "pdf-text" && a.pdfText; }).map(function (a) { return a.pdfText; });
@@ -1128,7 +2008,7 @@
     }
 
     var bubbleLabel = (currentTipo !== "Novo anúncio" ? "[" + currentTipo + "] " : "") +
-      (attachmentCount ? "[📎 " + attachmentCount + " anexo(s)] " : "") +
+      (attachmentCount ? "[" + attachmentCount + " anexo(s)] " : "") +
       (raw || "(sem descrição em texto — ver anexo)");
 
     var messageForModel = raw || "(sem descrição em texto — considerar apenas o(s) anexo(s) enviado(s))";
@@ -1152,36 +2032,47 @@
 
     busy = true;
     els.sendBtn.disabled = false;
-    els.sendBtn.textContent = "■";
+    els.sendBtn.innerHTML = icon("stop");
+    els.sendBtn.title = "Parar";
     els.sendBtn.classList.add("stop");
-    setStatus("GERANDO", true);
+    setCbuEnabled(false);
+    setStatus("GERANDO", "busy");
 
     var bubble = addAssistantBubble();
     abortCtl = new AbortController();
 
     try {
-      var res = await fetch(EDGE_FUNCTION_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: abortCtl.signal,
-        body: JSON.stringify({ turns: turns, attachments: attachmentsPayload })
-      });
+      var r = await callFunction({
+        turns: turns,
+        attachments: attachmentsPayload,
+        anuncioId: currentAnuncioId,
+        destaqueCbu: destaqueCbu
+      }, abortCtl.signal);
+      var data = r.data;
 
-      var data = null;
-      try { data = await res.json(); } catch (_e) { /* corpo vazio ou não-JSON */ }
-
-      if (!res.ok || !data || !data.text) {
+      if (!r.ok || !data || !data.text) {
         var code = (data && data.error) || "upstream_error";
-        bubble.parentElement.remove();
+        bubble.closest(".msg").remove();
         addErrorBubble(errorCopy(code));
         turns.pop(); // remove o turno do usuário que não teve resposta
       } else {
         renderTelegramPreview(bubble, data.text);
         turns.push({ role: "assistant", content: data.text });
+        if (data.anuncio && data.anuncio.id) {
+          currentAnuncioId = data.anuncio.id;
+          salvo = true;
+        } else {
+          salvo = false;
+          var note = document.createElement("span");
+          note.className = "msgNote";
+          note.textContent = "não salvo no histórico";
+          note.title = errorCopy("historico_indisponivel");
+          bubble.parentElement.querySelector(".msgTools").appendChild(note);
+        }
         showPostGenToast();
       }
     } catch (e) {
-      bubble.parentElement.remove();
+      bubble.closest(".msg").remove();
       turns.pop();
       if (e && e.name === "AbortError") {
         addErrorBubble("Envio cancelado.");
@@ -1190,10 +2081,11 @@
       }
     } finally {
       busy = false;
-      els.sendBtn.disabled = false;
-      els.sendBtn.textContent = "➤";
+      els.sendBtn.innerHTML = icon("send");
       els.sendBtn.classList.remove("stop");
-      setStatus("PRONTO", false);
+      updateSendLock(); // anexo adicionado durante a geração pode estar carregando
+      setCbuEnabled(true);
+      statusRepouso();
       scrollToBottom();
     }
   }
