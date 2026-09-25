@@ -1696,6 +1696,13 @@
     return !!lastAssistantTurn() && destaqueCbu !== destaqueSalvo;
   }
 
+  // A geração que vai sair leva uma deliberação do CBU? Vale para a
+  // pendência sobre um anúncio já gerado e também para a primeira geração
+  // da conversa enviada com o switch marcado (um request só).
+  function deliberaNoEnvio() {
+    return destaquePendente() || (!lastAssistantTurn() && destaqueCbu);
+  }
+
   // O switch só registra a deliberação; ela é aplicada no Enviar, junto com o
   // que o despachante tiver escrito (um request só).
   els.cbuToggle.addEventListener("change", function () {
@@ -1705,10 +1712,17 @@
     statusRepouso();
   });
 
+  // Bolha do despachante que marca, na conversa, o pedido de deliberação.
+  // Só visual: não entra nos turns enviados ao modelo.
+  function addDeliberacaoBubble(want) {
+    return addUserBubble(want ? "Deliberação de destaque pelo CBU" : "Deliberação do CBU: destaque desmarcado");
+  }
+
   // Enviar com o campo vazio e deliberação pendente: só troca o título.
   async function aplicarDeliberacao() {
     var want = destaqueCbu;
     var ultimo = lastAssistantTurn();
+    var userRow = addDeliberacaoBubble(want);
 
     if (!currentAnuncioId) {
       destaqueSalvo = want;
@@ -1719,6 +1733,7 @@
 
     var tentarDeNovo = function (errRow) {
       errRow.remove();
+      userRow.remove();
       if (destaquePendente()) aplicarDeliberacao();
     };
     busy = true;
@@ -2131,7 +2146,7 @@
       return;
     }
     if (recognizing) stopDictation();
-    var deliberou = destaquePendente(); // a geração já leva o destaqueCbu
+    var deliberou = deliberaNoEnvio(); // a geração já leva o destaqueCbu
 
     if (!EDGE_FUNCTION_URL || EDGE_FUNCTION_URL.indexOf("SEU_PROJECT_REF") !== -1) {
       addErrorBubble("Configure EDGE_FUNCTION_URL no início do <script> com a URL real da sua Supabase Edge Function.");
@@ -2165,11 +2180,13 @@
   // repetir o mesmo pedido (texto + anexos) sem o despachante redigitar.
   async function gerar(pedido, deliberou) {
     var userRow = addUserBubble(pedido.label);
+    var delibRow = deliberou ? addDeliberacaoBubble(destaqueCbu) : null;
     turns.push({ role: "user", content: pedido.message });
     var tentarDeNovo = function (errRow) {
       errRow.remove();
       userRow.remove();
-      gerar(pedido, destaquePendente());
+      if (delibRow) delibRow.remove();
+      gerar(pedido, deliberaNoEnvio());
     };
 
     busy = true;
