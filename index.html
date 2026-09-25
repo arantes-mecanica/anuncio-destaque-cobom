@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Anúncio de Ocorrência · CBMMG</title>
 <link rel="icon" type="image/png" href="assets/favicon-cbmmg.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121824" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -253,6 +258,7 @@
     font-family: "Barlow Condensed", sans-serif;
   }
   .headerBtn:hover, .chip:not(.active):hover { border-color: var(--accent); color: var(--accent); background: var(--panel); }
+  .headerBtn[hidden] { display: none; }
   .headerBtn .ic { font-size: 16px; }
   .headerBtn .hbLabel {
     font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em;
@@ -816,6 +822,7 @@
   <symbol id="i-mic" viewBox="0 0 24 24"><rect x="8.5" y="2" width="7" height="12.5" rx="3.5" fill="currentColor" stroke="none"/><path d="M5 11.5a7 7 0 0 0 14 0M12 18.5V22"/></symbol>
   <symbol id="i-send" viewBox="0 0 24 24"><path d="M3.4 20.4 21 12 3.4 3.6v6.5L15 12 3.4 13.9z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-install" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
@@ -837,6 +844,9 @@
     </div>
   </div>
   <div class="headerRight">
+    <button class="headerBtn" id="installBtn" type="button" title="Instalar como aplicativo: janela própria e atalhos no ícone" hidden>
+      <svg class="ic"><use href="#i-install"/></svg><span class="hbLabel">Instalar</span>
+    </button>
     <button class="headerBtn" id="historyBtn" title="Anúncios das últimas 48h, para atualizar ou retificar">
       <svg class="ic"><use href="#i-history"/></svg><span class="hbLabel">Histórico</span>
     </button>
@@ -2267,6 +2277,60 @@
       send();
     }
   });
+
+  // ---------- App instalado (PWA) ----------
+  // Atalhos do ícone (manifest.webmanifest) abrem ./?acao=novo|historico.
+  // Com a janela já aberta, o navegador a reaproveita (launch_handler
+  // focus-existing) e entrega a URL pelo launchQueue: a conversa em
+  // andamento não se perde.
+  function aplicarAcao(url) {
+    var acao = new URL(url).searchParams.get("acao");
+    if (acao === "novo") {
+      closePanels();
+      doReset();
+      if (!turns.length) els.input.focus();
+    } else if (acao === "historico") {
+      openHistory();
+    }
+  }
+  var urlInicial = location.href;
+  if (location.search) {
+    history.replaceState(null, "", location.pathname); // F5 não repete a ação
+  }
+  aplicarAcao(urlInicial);
+  if ("launchQueue" in window) {
+    var primeiraLaunch = true;
+    window.launchQueue.setConsumer(function (params) {
+      // A abertura da janela também chega aqui; essa já foi tratada acima.
+      var repetida = primeiraLaunch && params.targetURL === urlInicial;
+      primeiraLaunch = false;
+      if (params.targetURL && !repetida) aplicarAcao(params.targetURL);
+    });
+  }
+
+  var installBtn = document.getElementById("installBtn");
+  var installPrompt = null;
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    installPrompt = e;
+    installBtn.hidden = false;
+  });
+  installBtn.addEventListener("click", function () {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    installPrompt.userChoice.finally(function () {
+      installPrompt = null;
+      installBtn.hidden = true;
+    });
+  });
+  window.addEventListener("appinstalled", function () {
+    installPrompt = null;
+    installBtn.hidden = true;
+  });
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(function () { /* segue sem cache */ });
+  }
 })();
 </script>
 </body>

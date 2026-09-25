@@ -1,0 +1,33 @@
+{
+  "id": "./",
+  "name": "Anúncio de Ocorrência · COBOM",
+  "short_name": "Anúncio COBOM",
+  "description": "Gera o Anúncio de Ocorrência de Destaque (Memorando nº 3.200 - CBMMG/BM3).",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "theme_color": "#FFFFFF",
+  "background_color": "#EEF1F5",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Novo anúncio",
+      "short_name": "Novo",
+      "description": "Começar uma nova ocorrência",
+      "url": "./?acao=novo",
+      "icons": [{ "src": "assets/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Histórico",
+      "description": "Anúncios das últimas 48h, para atualizar ou retificar",
+      "url": "./?acao=historico",
+      "icons": [{ "src": "assets/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    }
+  ],
+  "launch_handler": { "client_mode": ["focus-existing", "auto"] }
+}

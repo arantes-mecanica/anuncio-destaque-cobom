@@ -159,12 +159,42 @@ de novo.
   policies (a anon key não lê nada direto), mas o acesso pela função é
   aberto. Trave o CORS (seção 6) e considere autenticação.
 
+## Instalar como aplicativo (PWA)
+
+O site pode ser instalado como aplicativo: abre em janela própria (sem
+abas nem barra de endereço), ganha ícone na barra de tarefas/menu Iniciar
+e dois atalhos no menu do ícone: **Novo anúncio** e **Histórico**.
+
+- **Windows (Chrome ou Edge):** abra o site e clique em **Instalar** no
+  topo da página (ou no ícone de instalar na barra de endereço). Depois,
+  clique direito no ícone do app → **Fixar na barra de tarefas**. O clique
+  direito no ícone mostra os atalhos.
+- **Android (Chrome):** menu ⋮ → **Instalar app**. Pressione e segure o
+  ícone para ver os atalhos.
+- **iPhone (Safari):** Compartilhar → **Adicionar à Tela de Início**. O iOS
+  não tem os atalhos do ícone.
+
+Com o app já aberto, um atalho reaproveita a mesma janela: **Histórico**
+abre o histórico sem apagar a conversa, e **Novo anúncio** pede
+confirmação se houver uma ocorrência na tela. Os atalhos são só
+`./?acao=novo` e `./?acao=historico`, então também servem como link.
+
+`sw.js` guarda os arquivos do site para abrir rápido. O `index.html` é
+sempre buscado na rede primeiro, então as atualizações entram sozinhas.
+Ao trocar um ícone ou imagem, suba a versão de `CACHE` em `sw.js`. A
+Edge Function nunca passa pelo cache.
+
 ## Estrutura do projeto
 
 ```
 .
 ├── index.html                              # front-end (chat + regras de exibição)
+├── manifest.webmanifest                    # app instalável: nome, ícones, atalhos
+├── sw.js                                   # service worker (cache dos arquivos do site)
 ├── assets/
+│   ├── icons/                              # ícones do app, gerados de logo_cobom.png
+│   ├── logo_cobom.png                      # logo do COBOM em alta resolução
+│   ├── logo_cobom-128.png                  # logo do cabeçalho
 │   ├── luiz-eduardo.png                    # foto usada no painel de homenagem
 │   └── favicon-cbmmg.png                   # brasão do CBMMG, usado como favicon
 └── supabase/
