@@ -1786,6 +1786,71 @@
   var MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
   var MAX_PDF_PAGES = 12;
 
+  // Conta viaturas e militares do CBMMG nos empenhos do Relatório de Chamada.
+  // O texto do PDF chega numa linha só, com colunas embaralhadas, e a IA erra
+  // a conta; aqui ela vem pronta. Militar = matrícula BM distinta (o mesmo
+  // militar em duas viaturas conta uma vez). Viatura = prefixo seguido de
+  // unidade do CBMMG, o que deixa de fora PM, PC e placas de veículos.
+  function resumoRecursosBM(texto) {
+    var t = String(texto || "").replace(/Extra[íi]do por:[^()]*\(BM\d+\)/gi, " ");
+    var ini = t.search(/\bEmpenhos\b/);
+    if (ini < 0) return null;
+    var fim = t.slice(ini).search(/Integra\S*\s+com\s+REDS/i);
+    var bloco = fim < 0 ? t.slice(ini) : t.slice(ini, ini + fim);
+
+    var viaturas = [];
+    var reVtr = /\b([A-Z]{2,5}\d{3,6})(\s*\(ACA\))?\s+(?:Unidade\s+)?\S*(?:BBM|BEMAD|BOA|COB)\b/g;
+    var m;
+    while ((m = reVtr.exec(bloco))) {
+      var v = m[1] + (m[2] ? " (ACA)" : "");
+      if (viaturas.indexOf(v) < 0) viaturas.push(v);
+    }
+    var mats = {};
+    (bloco.match(/\(BM\d{6,8}\)/g) || []).forEach(function (x) { mats[x] = true; });
+    var militares = Object.keys(mats).length;
+    if (!viaturas.length && !militares) return null;
+    return { viaturas: viaturas, militares: militares };
+  }
+
+  function linhaRecursosBM(texto) {
+    var r = resumoRecursosBM(texto);
+    if (!r) return "";
+    function n2(n) { return (n < 10 ? "0" : "") + n; }
+    var partes = [];
+    if (r.viaturas.length) {
+      partes.push(n2(r.viaturas.length) + (r.viaturas.length === 1 ? " viatura" : " viaturas") +
+        " (" + r.viaturas.join(", ") + ")");
+    }
+    if (r.militares) partes.push(n2(r.militares) + (r.militares === 1 ? " militar" : " militares"));
+    return "\n[Recursos CBMMG contados pelo app nos empenhos: " + partes.join(" / ") + "]";
+  }
+
+  // Relatório de Chamada do SISP: tira o que não serve ao anúncio (cabeçalho
+  // e rodapé de página, campos vazios, nomes, CPF, telefones, dados de
+  // veículo). Deixa o texto menor (a Groq tem limite de tokens por
+  // requisição) e não manda dado pessoal. A contagem roda antes, no texto bruto.
+  function limparRelatorio(texto) {
+    var t = String(texto || "");
+    if (!/Relat[óo]rio de Chamada/i.test(t)) return t;
+    return t
+      // cabeçalho e rodapé repetidos em toda página
+      .replace(/(?:\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2}\s+)?Relat[óo]rio de Chamada\s+Completo sem informa\S+ de auditoria/gi, " ")
+      .replace(/Extra[íi]do por:[^()]*\(BM\d+\)(?:\s+P[áa]gina\s+de\s+\d+\s+\d+)?/gi, " ")
+      // nome + matrícula (militares, policiais, peritos): a contagem já vai pronta
+      .replace(/\b(?:(?:SD \d CL|SD|CB|\d SGT|SUBTEN|ASP OF|ASP|\d TEN|CAP|MAJ|TEN CEL|CEL|DL|TPAG|APAG|IP-I{1,3}|EP-I{1,3})\s+)?[A-ZÀ-Ý]+(?:\s+[A-ZÀ-Ý]+){0,7}\s*\((?:BM|PM|PC)\d{5,8}\)/g, " ")
+      // CPF de atendente e telefones
+      .replace(/\(\d{11}\)/g, " ")
+      .replace(/\(\d{2}\)\s*\d{4,5}-?\d{4}/g, " ")
+      // nomes de atendentes e solicitantes
+      .replace(/\b(?:Respons[áa]vel|Nome solicitante|Nome)\s+[A-ZÀ-Ý]+(?:\s+[A-ZÀ-Ý]+){0,7}(?=\s|$)/g, " ")
+      // campos vazios do formulário ("-" ou "Não")
+      .replace(/(?:M[ãa]e|Grau les[ãa]o|Data nascimento|Idade|CPF|Sexo|(?:RG )?\/ UF(?: solicitante)?|Habilitado\?|Possui mandado de pris[ãa]o\?|Possui registro de desaparecimento\?|Estrangeiro\?|Origem SIP\?|Origem Condutores\?|Autoridade\?|Matr[íi]cula solicitante \(se iniciativa\)|Telefone(?: solicitante)?|N[ºo] telefone|Complemento|Estabelecimento|Faixa reservada\?|RAT\?|Tentado\?|Retorno REDS|Descri[çc][ãa]o|Data\/hora solicita[çc][ãa]o)\s+(?:-\s*\/\s*-|-|N[ãa]o)(?=\s|$)/g, " ")
+      // dados de veículo sem utilidade para o anúncio
+      .replace(/Possui (?:registro|sinaliza\S+|ordem)[^?]*?\s+N[ãa]o/g, " ")
+      .replace(/Chassi\s+\w+|[ÚU]ltimo IPVA pago\s+\d+|Origem SDAK\?\s+(?:Sim|N[ãa]o)/g, " ")
+      .replace(/[ \t]{2,}/g, " ");
+  }
+
   // Tesseract.js (OCR) só é baixado na primeira vez que alguém anexa um PDF
   // escaneado; o worker com o idioma português fica reaproveitado depois.
   var ocrWorkerPromise = null;
@@ -2037,7 +2102,7 @@
         entry.processing = false;
         entry.pdfText = "[Texto extraído do PDF anexado \"" + file.name + "\" — " + maxPages +
           (pdf.numPages > maxPages ? " de " + pdf.numPages : "") + " página(s)]\n" +
-          textParts.join("\n\n") + "\n[Fim do PDF anexado]";
+          limparRelatorio(textParts.join("\n\n")) + linhaRecursosBM(textParts.join("\n")) + "\n[Fim do PDF anexado]";
         renderAttachStrip();
         return;
       }
@@ -2068,7 +2133,7 @@
       entry.pdfText = "[Texto extraído por OCR do PDF anexado \"" + file.name + "\" — " + maxPages +
         (pdf.numPages > maxPages ? " de " + pdf.numPages : "") + " página(s); " +
         "pode conter erros de leitura, especialmente em cabeçalhos de tabela]\n" +
-        ocrParts.join("\n\n") + "\n[Fim do PDF anexado]";
+        limparRelatorio(ocrParts.join("\n\n")) + linhaRecursosBM(ocrParts.join("\n")) + "\n[Fim do PDF anexado]";
       renderAttachStrip();
     } catch (err) {
       attachments = attachments.filter(function (a) { return a.id !== id; });

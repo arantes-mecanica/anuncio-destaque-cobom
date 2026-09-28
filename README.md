@@ -152,6 +152,9 @@ de novo.
   um erro da IA antes do envio, mantenha **Novo anúncio**: o texto volta
   corrigido e sem sufixo no título. A função força o sufixo do chip mesmo
   que o modelo erre.
+- Ao anexar o PDF do Relatório de Chamada, o próprio app conta as viaturas
+  e os militares do CBMMG nos empenhos (matrícula BM sem repetir) e manda a
+  contagem pronta para a IA, que só copia para o campo de viatura/efetivo.
 - Cada anúncio gerado fica salvo (só o texto final, nunca a conversa nem
   o texto de PDFs anexados) e aparece no botão **Histórico** por **48h a
   partir da data do fato** (campo DATA/HORA DO INÍCIO DA OCORRÊNCIA). Sem
