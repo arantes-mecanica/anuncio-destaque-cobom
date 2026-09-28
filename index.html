@@ -2171,9 +2171,9 @@
     if (pdfTexts.length) {
       messageForModel += "\n\n" + pdfTexts.join("\n\n");
     }
-    if (currentTipo !== "Novo anúncio") {
-      messageForModel = "Tipo de Anúncio: " + currentTipo + "\n\n" + messageForModel;
-    }
+    // Sempre explícito, inclusive "Novo anúncio": correção pedida antes do
+    // envio ao Comando não pode virar Atualização só por já haver anúncio.
+    messageForModel = "Tipo de Anúncio: " + currentTipo + "\n\n" + messageForModel;
 
     var attachmentsPayload = imageAttachments.map(function (a) {
       return { mimeType: a.mimeType, data: a.base64 };
@@ -2183,7 +2183,7 @@
     autoResize();
     clearAttachments();
 
-    gerar({ label: bubbleLabel, message: messageForModel, attachments: attachmentsPayload }, deliberou);
+    gerar({ label: bubbleLabel, message: messageForModel, attachments: attachmentsPayload, tipo: currentTipo }, deliberou);
   }
 
   // Um pedido de geração. Fica separado do send() para o "Tentar de novo"
@@ -2215,7 +2215,8 @@
         turns: turns,
         attachments: pedido.attachments,
         anuncioId: currentAnuncioId,
-        destaqueCbu: destaqueCbu
+        destaqueCbu: destaqueCbu,
+        tipo: pedido.tipo
       }, abortCtl.signal);
       var data = r.data;
 

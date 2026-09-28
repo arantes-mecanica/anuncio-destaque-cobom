@@ -146,12 +146,20 @@ de novo.
 - Quando o CBU delibera destaque, marque **CBU deliberou destaque**: o
   título vira `*OCORRÊNCIA DE DESTAQUE*` na hora, sem chamar a Groq, e o
   registro é atualizado. As atualizações seguintes continuam Destaque.
+- O chip ativo (**Novo anúncio**, **Atualização**, **Retificação**) decide
+  o título de cada resposta, inclusive dentro da mesma conversa. Atualização
+  e Retificação são só para anúncio **já enviado ao Comando**. Para corrigir
+  um erro da IA antes do envio, mantenha **Novo anúncio**: o texto volta
+  corrigido e sem sufixo no título. A função força o sufixo do chip mesmo
+  que o modelo erre.
 - Cada anúncio gerado fica salvo (só o texto final, nunca a conversa nem
   o texto de PDFs anexados) e aparece no botão **Histórico** por **48h a
   partir da data do fato** (campo DATA/HORA DO INÍCIO DA OCORRÊNCIA). Sem
   data informada, as 48h contam da criação. Abrir um anúncio carrega o
-  texto na conversa. A próxima Atualização/Retificação sobrescreve o
-  mesmo registro.
+  texto na conversa com o chip em Atualização. Qualquer envio seguinte,
+  com qualquer chip, sobrescreve o mesmo registro. "Novo anúncio" num
+  anúncio reaberto não cria registro novo, só indica que ele ainda não
+  foi enviado.
 - Os registros vencidos são apagados pela própria função a cada listagem
   ou gravação.
 - **Atenção:** o histórico não tem login. Quem tiver a URL do site

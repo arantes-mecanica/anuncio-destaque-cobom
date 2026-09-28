@@ -51,7 +51,7 @@ Identifique o(s) critério(s) 3.x aplicável(is), só com base no que foi inform
 - incerto: "A confirmar – possível item 3.x ([critério]); [o que falta para confirmar]";
 - nenhum critério aplicável: "Nenhum critério do Memorando nº 3.200 identificado com as informações disponíveis."
 Interpretação: nos critérios com vítima (3.3, 3.7.1 etc.), vítima em óbito também conta — a vítima encontrada morta no local foi atendida pela GU BM (constatação do óbito), mesmo sem condução a unidade de saúde. Ex.: incêndio urbano com vítima em óbito = Item 3.3.
-Em ATUALIZAÇÃO ou RETIFICAÇÃO, refaça o enquadramento do zero com TODOS os fatos da conversa (os antigos e os novos) — não copie o ENQUADRAMENTO do anúncio anterior. Fato novo como vítima, óbito, autoridade envolvida, evacuação, produto perigoso ou colapso muda o enquadramento.
+Em ATUALIZAÇÃO, RETIFICAÇÃO ou correção antes do envio, refaça o enquadramento do zero com TODOS os fatos da conversa (os antigos e os novos) — não copie o ENQUADRAMENTO do anúncio anterior. Fato novo como vítima, óbito, autoridade envolvida, evacuação, produto perigoso ou colapso muda o enquadramento.
 
 # MODELO DO ANÚNCIO (formato Telegram)
 É a mensagem real enviada ao grupo de autoridades (item 5.2 do Memorando). Use negrito de asterisco simples (*texto*, nunca **texto**), cada campo em uma única linha (rótulo em negrito + dois-pontos + espaço + valor, sem quebrar linha entre eles). Campos obrigatórios, exatamente nesta ordem:
@@ -65,7 +65,7 @@ Em ATUALIZAÇÃO ou RETIFICAÇÃO, refaça o enquadramento do zero com TODOS os 
 *OCORRÊNCIA EM ANDAMENTO?:* [SIM ou NÃO]
 *ENQUADRAMENTO:* [ver seção ENQUADRAMENTO]
 
-TÍTULO: quem decide entre OCORRÊNCIA DE DESTAQUE e OCORRÊNCIA DE RELEVÂNCIA é o CBU (Coordenador de Bombeiros da Unidade), não a análise dos critérios — o COBOM só assessora o CBU pelo campo ENQUADRAMENTO. Use exatamente o título indicado na seção "TÍTULO DESTE ANÚNCIO", no fim destas instruções, mesmo que algum critério do item 3 se aplique (mesmo modelo, mesmos campos, só o título muda). Atualização: acrescente " — ATUALIZAÇÃO" ao título (mantenha o que segue válido, substitua o alterado, reavalie o enquadramento). Retificação: acrescente " — RETIFICAÇÃO" e corrija só o que estava errado, mantendo o resto do último anúncio desta conversa (que pode ter sido recuperado do histórico).
+TÍTULO: quem decide entre OCORRÊNCIA DE DESTAQUE e OCORRÊNCIA DE RELEVÂNCIA é o CBU (Coordenador de Bombeiros da Unidade), não a análise dos critérios — o COBOM só assessora o CBU pelo campo ENQUADRAMENTO. Use exatamente o título indicado na seção "TÍTULO DESTE ANÚNCIO", no fim destas instruções, mesmo que algum critério do item 3 se aplique (mesmo modelo, mesmos campos, só o título muda). Sufixo do título (" — ATUALIZAÇÃO" ou " — RETIFICAÇÃO"): só quando a seção "TIPO DESTE ANÚNCIO", no fim destas instruções, mandar — quem decide é o despachante. Nunca deduza atualização ou retificação só porque já existe anúncio anterior nesta conversa.
 
 Exemplo de formatação (só o formato, não copie o conteúdo):
 *OCORRÊNCIA DE RELEVÂNCIA*
@@ -150,14 +150,34 @@ const ANUNCIO_COLS = "id, destaque_cbu, data_fato, created_at, updated_at, expir
 const TITULO_RE =
   /^[ \t]*\*{0,2}[ \t]*OCORR[ÊE]NCIA DE (?:DESTAQUE|RELEV[ÂA]NCIA)[ \t]*\*{0,2}([^*\n]*?)[ \t]*\*{0,2}[ \t]*$/m;
 
-// Garante o título decidido pelo CBU (o modelo pode errar). manterSufixo=false
-// descarta " — ATUALIZAÇÃO"/" — RETIFICAÇÃO": usado ao marcar/desmarcar
-// destaque, que é o primeiro disparo daquele anúncio com o novo título.
-function aplicarTitulo(texto: string, destaque: boolean, manterSufixo: boolean): string {
+// Tipo escolhido pelo despachante no chip. Atualização/Retificação só existem
+// depois do envio ao Comando; correção pedida antes disso é "Novo anúncio".
+const TIPOS = {
+  "Novo anúncio": {
+    sufixo: "",
+    instrucao:
+      "*Novo anúncio* — ainda NÃO foi enviado ao Comando. Título SEM sufixo (nada de \" — ATUALIZAÇÃO\" nem \" — RETIFICAÇÃO\"). Se já houver anúncio nesta conversa, a última mensagem é uma correção ou ajuste do despachante antes do envio: reescreva o anúncio completo já corrigido, como anúncio inicial, sem mencionar que houve correção.",
+  },
+  "Atualização": {
+    sufixo: " — ATUALIZAÇÃO",
+    instrucao:
+      "*Atualização* — o anúncio anterior já foi enviado ao Comando. Acrescente \" — ATUALIZAÇÃO\" ao título, mantenha o que segue válido e substitua o que mudou.",
+  },
+  "Retificação": {
+    sufixo: " — RETIFICAÇÃO",
+    instrucao:
+      "*Retificação* — o anúncio anterior já foi enviado ao Comando com erro. Acrescente \" — RETIFICAÇÃO\" ao título e corrija só o que estava errado, mantendo o resto do último anúncio desta conversa (que pode ter sido recuperado do histórico).",
+  },
+} as const;
+type Tipo = keyof typeof TIPOS;
+
+// Garante o título decidido pelo CBU e o sufixo do chip (o modelo pode errar).
+// marcar_destaque passa sufixo "": é o primeiro disparo daquele anúncio com o
+// novo título.
+function aplicarTitulo(texto: string, destaque: boolean, sufixo: string): string {
   const palavra = destaque ? "DESTAQUE" : "RELEVÂNCIA";
   const m = texto.match(TITULO_RE);
-  if (!m) return `*OCORRÊNCIA DE ${palavra}*\n` + texto;
-  const sufixo = manterSufixo && m[1].trim() ? " " + m[1].trim() : "";
+  if (!m) return `*OCORRÊNCIA DE ${palavra}${sufixo}*\n` + texto;
   return texto.replace(TITULO_RE, `*OCORRÊNCIA DE ${palavra}${sufixo}*`);
 }
 
@@ -236,7 +256,7 @@ async function marcarDestaque(id: unknown, destaque: unknown): Promise<Response>
     if (error) throw error;
     if (!atual) return json({ error: "not_found" }, 404);
 
-    const texto = aplicarTitulo(atual.texto, destaque, false);
+    const texto = aplicarTitulo(atual.texto, destaque, "");
     const { data, error: upErr } = await db
       .from("anuncios")
       .update({ texto, destaque_cbu: destaque, updated_at: new Date().toISOString() })
@@ -293,10 +313,13 @@ Deno.serve(async (req: Request) => {
   let attachments: Attachment[];
   let anuncioId: string | null;
   let destaqueCbu: boolean;
+  let tipo: Tipo;
   try {
     turns = body.turns;
     anuncioId = body.anuncioId ?? null;
     destaqueCbu = body.destaqueCbu === true;
+    tipo = body.tipo ?? "Novo anúncio";
+    if (!Object.hasOwn(TIPOS, tipo)) throw new Error("bad_tipo");
     if (anuncioId !== null && (typeof anuncioId !== "string" || !UUID_RE.test(anuncioId))) {
       throw new Error("bad_anuncio_id");
     }
@@ -342,10 +365,11 @@ Deno.serve(async (req: Request) => {
       content: RULES + "\n\n# TÍTULO DESTE ANÚNCIO\n" + (destaqueCbu
         ? "*OCORRÊNCIA DE DESTAQUE* — o CBU deliberou destaque."
         : "*OCORRÊNCIA DE RELEVÂNCIA* — o CBU ainda não deliberou destaque.") +
+        "\n\n# TIPO DESTE ANÚNCIO\n" + TIPOS[tipo].instrucao +
         // Com anúncio anterior na conversa, o modelo tende a repetir o
-        // ENQUADRAMENTO antigo mesmo quando a atualização traz fato novo.
+        // ENQUADRAMENTO antigo mesmo quando a nova mensagem traz fato novo.
         (turns.some((t) => t.role === "assistant")
-          ? "\n\n# REAVALIAÇÃO OBRIGATÓRIA\nJá existe anúncio anterior nesta conversa. Ignore o ENQUADRAMENTO dele e confronte TODOS os fatos acumulados (antigos + a última mensagem) com cada critério 3.1 a 3.14 antes de escrever o campo. Ex.: se a atualização trouxe vítima (ferida ou em óbito) num incêndio, o enquadramento passa a ser Item 3.3."
+          ? "\n\n# REAVALIAÇÃO OBRIGATÓRIA\nJá existe anúncio anterior nesta conversa. Ignore o ENQUADRAMENTO dele e confronte TODOS os fatos acumulados (antigos + a última mensagem) com cada critério 3.1 a 3.14 antes de escrever o campo. Ex.: se a nova mensagem trouxe vítima (ferida ou em óbito) num incêndio, o enquadramento passa a ser Item 3.3."
           : ""),
     },
     ...turns.map((t, i) => {
@@ -422,7 +446,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const text = aplicarTitulo(rawText, destaqueCbu, true);
+    const text = aplicarTitulo(rawText, destaqueCbu, TIPOS[tipo].sufixo);
 
     // Falha ao gravar no histórico não derruba o anúncio já gerado: o texto
     // volta normalmente e o front avisa que ele não ficou salvo.
