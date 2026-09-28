@@ -111,6 +111,7 @@ Responda SOMENTE com o bloco do anúncio, pronto para colar no Telegram — sem 
 
 const GROQ_MODEL_TEXT = "openai/gpt-oss-120b";
 const GROQ_MODEL_VISION = "qwen/qwen3.8-27b"; // lê texto + imagem (até 3 por requisição)
+const GROQ_TPM = 8000; // limite gratuito de tokens por minuto do GROQ_MODEL_TEXT
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 // Ajuste para o(s) domínio(s) reais do seu front-end assim que estiver no ar
@@ -196,6 +197,14 @@ function aplicarTitulo(texto: string, destaque: boolean, sufixo: string): string
   const m = texto.match(TITULO_RE);
   if (!m) return `*OCORRÊNCIA DE ${palavra}${sufixo}*\n` + texto;
   return texto.replace(TITULO_RE, `*OCORRÊNCIA DE ${palavra}${sufixo}*`);
+}
+
+// O modelo às vezes repete na síntese os prefixos que já vão no campo de
+// viatura/efetivo, ex.: "Bombeiros (ASM1727, UR00560 e ABTS1055) atenderam".
+// Tira só a lista entre parênteses, e só da linha da síntese.
+const PREFIXOS_RE = /\s*\((?:\s*[A-Z]{2,5}\d{3,6}(?:\s*\(ACA\))?\s*(?:,|\be\b)?)+\)/g;
+function limparSintese(texto: string): string {
+  return texto.replace(/^(\*?S[ÍI]NTESE DO FATO:.*)$/im, (linha) => linha.replace(PREFIXOS_RE, ""));
 }
 
 // Lê "DATA/HORA DO INÍCIO DA OCORRÊNCIA: 13/09/2026 – 19h50min" (horário de
@@ -405,11 +414,23 @@ Deno.serve(async (req: Request) => {
 
   const model = attachments.length > 0 ? GROQ_MODEL_VISION : GROQ_MODEL_TEXT;
 
+  // A Groq soma max_tokens ao tamanho do pedido no limite gratuito por
+  // minuto (8 mil tokens no gpt-oss-120b): regras + PDF + 2048 fixos
+  // estourava (erro 413). A resposta usa o que sobra; o raciocínio "medium"
+  // gasta ~1.200 tokens, então com pouca sobra cai para "low".
+  // Estimativa de ~3,2 caracteres por token (medido: 5.972 tokens para
+  // ~19,5 mil caracteres).
+  const charsPedido = messages.reduce((n, m) =>
+    n + (typeof m.content === "string" ? m.content.length : JSON.stringify(m.content).length), 0);
+  const sobra = GROQ_TPM - Math.ceil(charsPedido / 3.2) - 150;
+  const maxTokens = model === GROQ_MODEL_TEXT ? Math.max(900, Math.min(2048, sobra)) : 2048;
+
   const requestBody = JSON.stringify({
     model,
     messages,
-    max_tokens: 2048,
+    max_tokens: maxTokens,
     temperature: 0.4,
+    ...(model === GROQ_MODEL_TEXT ? { reasoning_effort: maxTokens >= 1600 ? "medium" : "low" } : {}),
   });
 
   try {
@@ -445,7 +466,9 @@ Deno.serve(async (req: Request) => {
 
     if (!groqRes || !groqRes.ok) {
       const status = groqRes?.status;
-      const code = status === 503 || status === 429 ? "model_overloaded" : "upstream_error";
+      const code = status === 503 || status === 429
+        ? "model_overloaded"
+        : status === 413 ? "request_too_large" : "upstream_error";
       return new Response(
         JSON.stringify({ error: code, status }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -463,7 +486,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const text = aplicarTitulo(rawText, destaqueCbu, TIPOS[tipo].sufixo);
+    const text = aplicarTitulo(limparSintese(rawText), destaqueCbu, TIPOS[tipo].sufixo);
 
     // Falha ao gravar no histórico não derruba o anúncio já gerado: o texto
     // volta normalmente e o front avisa que ele não ficou salvo.

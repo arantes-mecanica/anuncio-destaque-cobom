@@ -2,7 +2,7 @@
 // site: a Edge Function, Google Fonts e cdnjs passam direto pela rede.
 // Ao trocar um asset (ícone, imagem), suba a versão de CACHE. O index.html
 // não precisa: é buscado sempre na rede primeiro.
-var CACHE = "cobom-v1";
+var CACHE = "cobom-v2";
 var ARQUIVOS = [
   "./",
   "index.html",
@@ -36,9 +36,11 @@ self.addEventListener("fetch", function (e) {
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
 
   // Página: rede primeiro (atualização entra na hora); cache se cair a rede.
+  // "no-cache" revalida no servidor em vez de usar a cópia de até 10 min
+  // que o navegador guarda do GitHub Pages.
   if (req.mode === "navigate") {
     e.respondWith(
-      fetch(req).then(function (res) {
+      fetch(req, { cache: "no-cache" }).then(function (res) {
         var copia = res.clone();
         if (res.ok) caches.open(CACHE).then(function (c) { c.put("index.html", copia); });
         return res;

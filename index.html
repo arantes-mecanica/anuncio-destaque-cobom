@@ -1281,7 +1281,8 @@
       case "invalid_request": return "Requisição inválida — recarregue a página e tente de novo.";
       case "server_misconfigured": return "A Edge Function está sem a chave da Groq configurada (GROQ_API_KEY). Avise quem administra o Supabase do projeto.";
       case "upstream_error": return "A API da Groq recusou ou falhou a chamada. Tente novamente em instantes.";
-      case "model_overloaded": return "A Groq está com alta demanda no momento (já tentamos de novo automaticamente). Aguarde um pouco e tente de novo.";
+      case "request_too_large": return "A mensagem ficou grande demais para o limite gratuito da Groq. Tente de novo em 1 minuto; se continuar, anexe só o PDF, sem texto extra.";
+      case "model_overloaded": return "A Groq está com alta demanda ou atingiu o limite por minuto (já tentamos de novo automaticamente). Aguarde cerca de 1 minuto e tente de novo.";
       case "empty_completion": return "Não foi possível gerar uma resposta. Tente descrever a ocorrência com mais detalhes.";
       case "network_error": return "Não foi possível conectar à Edge Function. Confira a URL configurada e sua conexão.";
       case "historico_indisponivel": return "Histórico indisponível no momento (banco de dados não configurado ou fora do ar). A geração de anúncios continua funcionando.";
@@ -1848,7 +1849,16 @@
       // dados de veículo sem utilidade para o anúncio
       .replace(/Possui (?:registro|sinaliza\S+|ordem)[^?]*?\s+N[ãa]o/g, " ")
       .replace(/Chassi\s+\w+|[ÚU]ltimo IPVA pago\s+\d+|Origem SDAK\?\s+(?:Sim|N[ãa]o)/g, " ")
-      .replace(/[ \t]{2,}/g, " ");
+      // marcas de página e separadores "#####" do histórico
+      .replace(/\[P[áa]gina \d+\]/g, " ")
+      .replace(/#{3,}/g, " ")
+      // envolvido que é só solicitante não é vítima nem fato
+      .replace(/Envolvido\s+\d+\s+Tipo envolvimento\s+Solicitante\s+(?:Telefone\s+)?Solicitante principal\?\s+(?:Sim|N[ãa]o)/g, " ")
+      // números de REDS e comunicações de rede: nada disso vai no anúncio.
+      // Os recursos já foram contados antes, no texto bruto.
+      .replace(/Integra\S*\s+com\s+REDS[\s\S]*?(?=Acionamentos ao SISP|$)/, " ")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\s*\n\s*\n\s*/g, "\n");
   }
 
   // Tesseract.js (OCR) só é baixado na primeira vez que alguém anexa um PDF
